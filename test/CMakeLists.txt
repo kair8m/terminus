@@ -1,4 +1,6 @@
 find_package(Threads REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_search_module(OPENSSL REQUIRED openssl)
 
 # Enable ExternalProject CMake module
 include(ExternalProject)

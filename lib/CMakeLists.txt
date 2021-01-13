@@ -3,6 +3,8 @@ set(libterminus_MAJOR 0)
 set(libterminus_MINOR 1)
 set(libterminus_VERSION ${libterminus_MAJOR}.${libterminus_MINOR}.${libterminus_PATCH})
 
+find_package(OpenSSL REQUIRED)
+
 set(libterminus_COMMAND_SOURCES
   command/Command.h
   command/CommandFactory.h
@@ -44,5 +46,8 @@ add_library(terminus SHARED
 target_include_directories(terminus PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
+
+target_link_libraries(terminus
+  OpenSSL::Crypto)
 
 set_target_properties(terminus PROPERTIES VERSION ${libterminus_VERSION} SOVERSION ${libterminus_MAJOR})
