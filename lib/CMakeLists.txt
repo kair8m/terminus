@@ -9,6 +9,8 @@ set(libterminus_COMMAND_SOURCES
   command/Command.h
   command/CommandFactory.h
   command/CommandFactory.cpp
+  command/CommandData.h
+  command/CommandData.cpp
   )
 
 set(libterminus_CRYPTO_SOURCES
