@@ -1,0 +1,9 @@
+#ifndef TERMINUS_COMMANDFACTORY_H
+#define TERMINUS_COMMANDFACTORY_H
+
+class CommandFactory {
+
+};
+
+
+#endif //TERMINUS_COMMANDFACTORY_H
