@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <cxxopts.hpp>
 
 class TerminusClientApplication {
 public:
