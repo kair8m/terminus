@@ -1,3 +1,8 @@
+set(libterminus_PATCH 1)
+set(libterminus_MAJOR 0)
+set(libterminus_MINOR 1)
+set(libterminus_VERSION ${libterminus_MAJOR}.${libterminus_MINOR}.${libterminus_PATCH})
+
 set(libterminus_COMMAND_SOURCES
   command/Command.h
   command/CommandFactory.h
@@ -19,11 +24,13 @@ set(libterminus_CLIENT_SOURCES
   client/Master.h
   client/Master.cpp
   client/Slave.h
-  client/Slave.cpp)
+  client/Slave.cpp
+  )
 
 set(libterminus_SERVER_SOURCES
   server/Bridge.h
-  server/Bridge.cpp)
+  server/Bridge.cpp
+  )
 
 # Declare the library
 add_library(terminus SHARED
@@ -37,3 +44,5 @@ add_library(terminus SHARED
 target_include_directories(terminus PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
+
+set_target_properties(terminus PROPERTIES VERSION ${libterminus_VERSION} SOVERSION ${libterminus_MAJOR})
