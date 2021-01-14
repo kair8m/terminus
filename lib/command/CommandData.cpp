@@ -2,11 +2,12 @@
 #include <map>
 
 CommandData::CommandData() : fData() {
+  fDataIterator = fData.end();
 }
 
 CommandData::~CommandData() = default;
 
-uint8_t *CommandData::getPtr() const {
+uint8_t *CommandData::getDataPtr() const {
   return fData.data();
 }
 
@@ -16,6 +17,7 @@ size_t CommandData::getSize() const {
 
 void CommandData::appendByte(Byte element) {
   fData.emplace_back(element);
+  fDataIterator = fData.begin();
 }
 
 void CommandData::appendWord(Word element) {
@@ -71,6 +73,6 @@ void CommandData::appendQwordArray(const QwordArray &element) {
 
 void CommandData::appendString(const std::string &str) {
   ByteArray byteArray;
-  std::copy(str.c_str(), str.c_str()+str.length(), back_inserter(byteArray));
+  std::copy(str.c_str(), str.c_str() + str.length(), back_inserter(byteArray));
   return appendByteArray(byteArray);
 }

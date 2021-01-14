@@ -16,18 +16,6 @@ private:
   using WordArray = std::vector<Word>;
   using DwordArray = std::vector<Dword>;
   using QwordArray = std::vector<Qword>;
-private:
-  enum class StoredType {
-    Byte,
-    Word,
-    Dword,
-    Qword,
-    ByteArray,
-    WordArray,
-    DwordArray,
-    QwordArray,
-    String,
-  };
 public:
   CommandData();
 
@@ -35,22 +23,53 @@ public:
 
   size_t getSize() const;
 
-  uint8_t *getPtr() const;
+  uint8_t *getDataPtr() const;
+
+  template<typename T>
+  T get() const {
+    // check if data is empty
+    if (fData.empty())
+      return {};
+    // check if requested element exceeds data buffer size
+    if (sizeof(T) + fDataIterator > fData.end())
+      return {};
+    auto it = fDataIterator;
+    fDataIterator += sizeof(T);
+    T ret = {};
+    auto ratio = sizeof(T) / sizeof(Byte);
+    for (int i = 0, pos = 0; i < sizeof(T) / sizeof(Byte); i++, pos += sizeof(Byte) * 8) {
+      ret |= (T) *it++ << pos;
+    }
+    return ret;
+  }
+
+  template<typename T>
+  std::vector<T> get(uint16_t size) const {
+    // check if data is empty
+    if (fData.empty())
+      return {};
+    // check if requested element exceeds data buffer size
+    if (sizeof(T) * size + fDataIterator > fData.end())
+      return {};
+    std::vector<T> ret = {};
+    auto it = fDataIterator;
+    fDataIterator += size;
+    for (int i = 0; i < size; i++) {
+      ret.emplace_back(*it++);
+    }
+    return ret;
+  }
 
   template<typename T>
   void append(T data) {
     switch (sizeof(data)) {
       case sizeof(Byte):
-        fDataFields.emplace_back(StoredType::Byte);
         return appendByte(data);
       case sizeof(Word):
-        fDataFields.emplace_back(StoredType::Word);
         return appendWord(data);
       case sizeof(Dword):
-        fDataFields.emplace_back(StoredType::Dword);
         return appendDword(data);
       case sizeof(Qword):
-        fDataFields.emplace_back(StoredType::Qword);
         return appendQword(data);
       default:
         return;
@@ -64,44 +83,50 @@ public:
   }
 
   void append(const std::string &chars) {
-    fDataFields.emplace_back(StoredType::String);
     return appendString(chars);
   }
 
-  void append(const uint8_t* bytes, size_t numBytes) {
+  void append(const uint8_t *bytes, size_t numBytes) {
     ByteArray byteArray;
     byteArray.insert(byteArray.end(), &bytes[0], &bytes[numBytes]);
-    fDataFields.emplace_back(StoredType::WordArray);
     return appendByteArray(byteArray);
   }
 
-  void append(const uint16_t* words, size_t numWords) {
+  void append(const uint16_t *words, size_t numWords) {
     WordArray wordArray;
     wordArray.insert(wordArray.end(), &words[0], &words[numWords]);
-    fDataFields.emplace_back(StoredType::WordArray);
     return appendWordArray(wordArray);
   }
 
-  void append(const uint32_t* words, size_t numDwords) {
+  void append(const uint32_t *words, size_t numDwords) {
     DwordArray dwordArray;
     dwordArray.insert(dwordArray.end(), &words[0], &words[numDwords]);
-    fDataFields.emplace_back(StoredType::DwordArray);
     return appendDwordArray(dwordArray);
   }
 
-  void append(const uint64_t* words, size_t numQwords) {
+  void append(const uint64_t *words, size_t numQwords) {
     QwordArray qwordArray;
     qwordArray.insert(qwordArray.end(), &words[0], &words[numQwords]);
-    fDataFields.emplace_back(StoredType::QwordArray);
     return appendQwordArray(qwordArray);
   }
 
   void clear() {
-    fDataFields.clear();
     fData.clear();
   }
 
 private:
+
+  template<typename ReturnType, typename InputType>
+  std::vector<ReturnType> splitElement(InputType in) {
+    std::vector<ReturnType> retVector = {};
+    if (sizeof(ReturnType) > sizeof(InputType))
+      return {};
+    auto ratio = sizeof(InputType) / sizeof(ReturnType);
+    for (int i = 0, pos = 0; i < ratio; i++, pos += sizeof(ReturnType)) {
+      ReturnType element = in >> pos;
+      retVector.emplace_back(element);
+    }
+  }
 
   void appendByte(Byte element);
 
@@ -123,7 +148,7 @@ private:
 
 private:
   mutable ByteArray fData;
-  std::vector<StoredType> fDataFields;
+  mutable ByteArray::iterator fDataIterator;
 };
 
 
