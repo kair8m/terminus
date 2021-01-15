@@ -6,11 +6,10 @@ set(libterminus_VERSION ${libterminus_MAJOR}.${libterminus_MINOR}.${libterminus_
 find_package(OpenSSL REQUIRED)
 
 set(libterminus_COMMAND_SOURCES
-  command/Command.h
-  command/CommandFactory.h
-  command/CommandFactory.cpp
-  command/CommandData.h
-  command/CommandData.cpp
+  message/Message.h
+  message/MessageFactory.h
+  message/Buffer.h
+  message/Buffer.cpp
   )
 
 set(libterminus_CRYPTO_SOURCES

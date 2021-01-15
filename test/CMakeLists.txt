@@ -42,7 +42,7 @@ include_directories("${source_dir}/googletest/include"
   "${source_dir}/googlemock/include")
 
 add_subdirectory(client)
-add_subdirectory(command)
+add_subdirectory(message)
 add_subdirectory(crypto)
 add_subdirectory(logger)
 add_subdirectory(server)

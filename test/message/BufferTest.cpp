@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
-#include "command/CommandData.h"
+#include "message/Buffer.h"
 
-TEST(CommandDataTest, FieldTest) {
-  CommandData data;
+TEST(BufferTest, FieldTest) {
+  Buffer data;
   uint8_t byte = 0x0A;
   uint16_t word = 0xABCD;
   uint32_t dword = 0xABCDABCD;

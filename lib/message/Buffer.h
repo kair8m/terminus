@@ -1,12 +1,12 @@
-#ifndef TERMINUS_COMMANDDATA_H
-#define TERMINUS_COMMANDDATA_H
+#ifndef TERMINUS_BUFFER_H
+#define TERMINUS_BUFFER_H
 
 #include <memory>
 #include <vector>
 #include <cstdlib>
 #include <cstring>
 
-class CommandData {
+class Buffer {
 private:
   using Byte = uint8_t;
   using Word = uint16_t;
@@ -17,13 +17,15 @@ private:
   using DwordArray = std::vector<Dword>;
   using QwordArray = std::vector<Qword>;
 public:
-  CommandData();
+  Buffer();
 
-  ~CommandData();
+  Buffer(const uint8_t *data, size_t len);
+
+  ~Buffer();
 
   size_t getSize() const;
 
-  uint8_t *getDataPtr() const;
+  const uint8_t *getDataPtr() const;
 
   template<typename T>
   T get() const {
@@ -114,6 +116,10 @@ public:
     fData.clear();
   }
 
+  void reset() const {
+    fDataIterator = fData.begin();
+  }
+
 private:
 
   template<typename ReturnType, typename InputType>
@@ -152,4 +158,4 @@ private:
 };
 
 
-#endif //TERMINUS_COMMANDDATA_H
+#endif //TERMINUS_BUFFER_H
