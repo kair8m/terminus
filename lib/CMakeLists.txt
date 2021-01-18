@@ -5,11 +5,15 @@ set(libterminus_VERSION ${libterminus_MAJOR}.${libterminus_MINOR}.${libterminus_
 
 find_package(OpenSSL REQUIRED)
 
-set(libterminus_COMMAND_SOURCES
-  message/Message.h
-  message/MessageFactory.h
+set(libterminus_MESSAGE_SOURCES
   message/Buffer.h
   message/Buffer.cpp
+  message/Message.h
+  message/MessageFactory.h
+  message/ConnectMessage.h
+  message/PutCharMessage.h
+  message/ResizeTerminalMessage.h
+  message/ResponseMessage.h
   )
 
 set(libterminus_CRYPTO_SOURCES
@@ -37,7 +41,7 @@ set(libterminus_SERVER_SOURCES
 
 # Declare the library
 add_library(terminus SHARED
-  ${libterminus_COMMAND_SOURCES}
+  ${libterminus_MESSAGE_SOURCES}
   ${libterminus_CRYPTO_SOURCES}
   ${libterminus_LOGGER_SOURCES}
   )
