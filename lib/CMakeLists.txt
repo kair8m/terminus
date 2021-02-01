@@ -39,6 +39,11 @@ set(libterminus_SERVER_SOURCES
   server/Bridge.cpp
   )
 
+set(libterminus_TERMINAL_SOURCES
+  terminal/terminal.hpp
+  terminal/console.hpp
+  )
+
 # Declare the library
 add_library(terminus SHARED
   ${libterminus_MESSAGE_SOURCES}
@@ -53,6 +58,8 @@ target_include_directories(terminus PUBLIC
   )
 
 target_link_libraries(terminus
-  OpenSSL::Crypto)
+  OpenSSL::Crypto
+  pthread
+  util)
 
 set_target_properties(terminus PROPERTIES VERSION ${libterminus_VERSION} SOVERSION ${libterminus_MAJOR})
