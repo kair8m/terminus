@@ -1,17 +1,14 @@
 #include "gtest/gtest.h"
 #include "terminal/terminal.hpp"
 
-class TestApplication {
+class TestApplication : public Terminal {
 public:
-  TestApplication() {
-    fTerminal = std::make_shared<Terminal>(80, 24, false);
+  TestApplication(int width, int height, bool withAuthentication) : Terminal(width, height, withAuthentication) {
   }
 
-  void run() {
-
+  void onData(const std::string &data) override {
+    ::write(STDOUT_FILENO, data.c_str(), data.size());
   }
-private:
-  std::shared_ptr<Terminal> fTerminal = nullptr;
 };
 
 TEST(TerminalTest, SingleCommandTest) {
@@ -19,5 +16,7 @@ TEST(TerminalTest, SingleCommandTest) {
   ASSERT_TRUE(result.first == 0);
   ASSERT_TRUE(!result.second.empty());
   std::cout << result.second << std::endl;
-  Terminal terminal(80, 10, false);
+  TestApplication terminal(80, 10, false);
+  ASSERT_TRUE(terminal.open());
+  terminal.write("ls -a\n");
 }

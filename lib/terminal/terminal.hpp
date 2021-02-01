@@ -90,7 +90,7 @@ public:
 protected:
 
   virtual void onData(const std::string &data) {
-    (void)data;
+    (void) data;
   }
 
 private:

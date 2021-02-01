@@ -1,11 +1,26 @@
 #ifndef TERMINUS_CONSOLE_HPP
 #define TERMINUS_CONSOLE_HPP
 
+
 class Console {
 private:
-
+  termios fSave;
+  termios fWindow;
 public:
-  Console() {
+  Console() {}
+
+  bool setup() {
+
+  }
+
+  void write(const std::string &data) {
+
+  }
+
+protected:
+
+  virtual void onData(const std::string &data) {
+    (void) data;
   }
 };
 
