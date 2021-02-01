@@ -87,6 +87,12 @@ public:
     return std::make_pair(status, output);
   }
 
+protected:
+
+  virtual void onData(const std::string &data) {
+    (void)data;
+  }
+
 private:
 
   [[noreturn]] void tty() const {
@@ -110,8 +116,10 @@ private:
       recvSize = read(fTerminalFd, recvBuf, READ_BUFFER_SIZE);
       if (recvSize <= 0)
         continue;
+      std::string data(recvBuf, recvSize);
       if (fReadHandler)
-        fReadHandler(std::string(recvBuf, recvSize));
+        fReadHandler(data);
+      onData(data);
     }
     delete[] recvBuf;
   }
