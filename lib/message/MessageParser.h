@@ -1,17 +1,32 @@
-#ifndef TERMINUS_COMMANDPARSER_H
-#define TERMINUS_COMMANDPARSER_H
+#ifndef TERMINUS_MESSAGEPARSER_H
+#define TERMINUS_MESSAGEPARSER_H
+
+#include <utility>
 
 #include "PutCharMessage.h"
 #include "ResizeTerminalMessage.h"
 #include "ResponseMessage.h"
 #include "ConnectMessage.h"
+#include "EncryptedMessage.h"
 #include "MessageFactory.h"
 
 class MessageParser {
 public:
   using Ptr = std::shared_ptr<MessageParser>;
 public:
-  static std::shared_ptr<Message> parse(const uint8_t *data, size_t len) {
+  MessageParser(std::string key, std::string iv) : fKey(std::move(key)), fIv(std::move(iv)) {
+
+  }
+
+  void setKey(const std::string &key) {
+    fKey = key;
+  }
+
+  void setIv(const std::string &iv) {
+    fIv = iv;
+  }
+
+  std::shared_ptr<Message> parse(const uint8_t *data, size_t len) {
     Buffer buffer(data, len);
     auto id = buffer.get<uint32_t>();
     switch (id) {
@@ -41,10 +56,21 @@ public:
         nlohmann::json metaData = nlohmann::json::parse(chars);
         return MessageFactory::create<ResponseMessage>(static_cast<ResponseCode>(code), metaData);
       }
+      case EncryptedMessage::id: {
+        auto size = buffer.get<uint16_t>();
+        auto charVector = buffer.get<char>(size);
+        std::string chars = Crypto::AES256::decryptData(charVector.data(), fKey, fIv);
+        return parse((const uint8_t *)(chars.data()), chars.size());
+      }
       default:
         return nullptr;
     }
   }
+
+
+private:
+  std::string fKey;
+  std::string fIv;
 };
 
 

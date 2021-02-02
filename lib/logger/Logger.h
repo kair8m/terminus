@@ -60,6 +60,16 @@ public:
 
 public:
   static void log(LogLevel level, const char *format, ...);
+
+  static void printHex(const uint8_t *data, size_t len) {
+    for (int i = 0; i < len; i++) {
+      if (i >= 10 && i % 10 == 0)
+        std::cout << std::endl;
+      printf("0x%.2X ", data[i]);
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+  }
 };
 
 #define DINFO(format, arg...)   Logger::log(Logger::LogLevel::LogLevelInfo , KGRN "[%s] INFO  %s %s:%d " format, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)

@@ -5,11 +5,12 @@
 
 namespace Crypto {
   namespace MD5 {
-    std::string encryptData(const std::string& input);
+    std::string encryptData(const std::string &input);
   }
   namespace AES256 {
-    std::string encryptData(const std::string& input, const std::string &key, const std::string &iv);
-    std::string decryptData(const std::string& input, const std::string &key, const std::string &iv);
+    std::string encryptData(const std::string &input, const std::string &key, const std::string &iv);
+
+    std::string decryptData(const std::string &input, const std::string &key, const std::string &iv);
   }
 }
 
