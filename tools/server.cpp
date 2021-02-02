@@ -1,6 +1,11 @@
-#include <stdio.h>
 #include <iostream>
 #include <cxxopts.hpp>
+#include <server/Bridge.h>
+#include <server/MessageServer.h>
+
+class TerminusServer : public MessageServer {
+
+};
 
 class TerminusServerApplication {
 public:
