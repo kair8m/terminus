@@ -49,6 +49,7 @@ add_library(terminus SHARED
   ${libterminus_MESSAGE_SOURCES}
   ${libterminus_CRYPTO_SOURCES}
   ${libterminus_LOGGER_SOURCES}
+  ${libterminus_TERMINAL_SOURCES}
   )
 
 # Specify here the include directories exported
