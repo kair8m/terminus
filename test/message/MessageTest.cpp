@@ -8,8 +8,8 @@ TEST(MessageTest, ParserTest) {
   EncryptedMessage::Ptr encryptedMessage;
 
   // init message parser
-  auto key = "kair8m";
-  auto iv = "asdasdasd";
+  auto key = "terminus by kair";
+  auto iv = "terminus";
   MessageParser messageParser(key, iv);
 
   //test resize terminal message
