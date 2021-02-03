@@ -7,6 +7,11 @@ namespace Crypto {
   namespace MD5 {
     std::string encryptData(const std::string &input);
   }
+  /**
+   * @brief encrypt and decrypt data using AES256 algorithm
+   * @note iv is optional
+   * @warning undefined behaviour if key and iv are equal
+   */
   namespace AES256 {
     std::string encryptData(const std::string &input, const std::string &key, const std::string &iv);
 

@@ -5,6 +5,8 @@
 #include <cstring>
 
 static std::string getAlignedString(const std::string &str, const size_t &desiredLen) {
+  if (str.empty())
+    return {};
   std::string output;
   output.assign(desiredLen, 'k');
   int len = str.size() > desiredLen ? desiredLen : str.size();
