@@ -4,9 +4,22 @@
 #include <openssl/evp.h>
 #include <cstring>
 
-std::string Crypto::AES256::encryptData(const std::string &input, const std::string &key, const std::string &iv) {
+static std::string getAlignedString(const std::string &str, const size_t &desiredLen) {
+  std::string output;
+  output.assign(desiredLen, ' ');
+  int len = str.size() > desiredLen ? desiredLen : str.size();
+  for (int i = 0; i < len; i++) {
+    output[i] = str[i];
+  }
+  return output;
+}
+
+std::string Crypto::AES256::encryptData(const std::string &input, const std::string &userKey, const std::string &userIv) {
   std::string output;
   EVP_CIPHER_CTX *ctx;
+
+  std::string key = getAlignedString(userKey, 32);
+  std::string iv = getAlignedString(userIv, 16);
 
   int len;
 
@@ -57,10 +70,13 @@ std::string Crypto::AES256::encryptData(const std::string &input, const std::str
 }
 
 
-std::string Crypto::AES256::decryptData(const std::string &input, const std::string &key, const std::string &iv) {
+std::string Crypto::AES256::decryptData(const std::string &input, const std::string &userKey, const std::string &userIv) {
   EVP_CIPHER_CTX *ctx;
 
   std::string output;
+
+  std::string key = getAlignedString(userKey, 32);
+  std::string iv = getAlignedString(userIv, 16);
 
   int len;
 

@@ -3,8 +3,8 @@
 #include "logger/Logger.h"
 
 TEST(MessageTest, ParserTest) {
-  auto key = "qwertyuiop[] test 1234567890-=123123123123";
-  auto iv = "asdfghjkl test 1234545667";
+  auto key = "123";
+  auto iv = "123";
   MessageParser messageParser(key, iv);
   auto resizeTerminalMessage = MessageFactory::create<ResizeTerminalMessage>(10, 10);
   ASSERT_EQ(resizeTerminalMessage->getHeight(), 10);
