@@ -6,7 +6,7 @@
 
 static std::string getAlignedString(const std::string &str, const size_t &desiredLen) {
   std::string output;
-  output.assign(desiredLen, ' ');
+  output.assign(desiredLen, 'k');
   int len = str.size() > desiredLen ? desiredLen : str.size();
   for (int i = 0; i < len; i++) {
     output[i] = str[i];
