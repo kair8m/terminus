@@ -38,4 +38,4 @@ private:
   mutable std::string fChars;
 };
 
-#endif //TERMINUS_PUTCHARCOMMAND_H
+#endif //TERMINUS_PUTCHARMESSAGE_H

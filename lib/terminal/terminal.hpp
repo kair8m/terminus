@@ -5,6 +5,8 @@
 #include <pty.h>
 #include <fcntl.h>
 #include <condition_variable>
+#include <csignal>
+#include <wait.h>
 
 class Terminal {
 public:
