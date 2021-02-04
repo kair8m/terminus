@@ -8,22 +8,20 @@ TEST(MessageTest, ParserTest) {
   EncryptedMessage::Ptr encryptedMessage;
 
   // init message parser
-  auto key = "terminus by kair";
-  auto iv = "terminus";
-  MessageParser messageParser(key, iv);
+  MessageParser messageParser;
 
   //test resize terminal message
   auto resizeTerminalMessage = MessageFactory::create<ResizeTerminalMessage>(10, 10);
   ASSERT_EQ(resizeTerminalMessage->getHeight(), 10);
   ASSERT_EQ(resizeTerminalMessage->getWidth(), 10);
   parseResult = messageParser.parse(resizeTerminalMessage->getBuffer().getDataPtr(),
-                                         resizeTerminalMessage->getBuffer().getSize());
+                                    resizeTerminalMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->getId(), resizeTerminalMessage->getId());
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getHeight(), resizeTerminalMessage->getHeight());
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getWidth(), resizeTerminalMessage->getWidth());
   ASSERT_TRUE(messageParser.parse(nullptr, 0) == nullptr);
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(resizeTerminalMessage, key, iv);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(resizeTerminalMessage);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
@@ -45,7 +43,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getMetaData()["Token"], testToken);
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getResponseCode(), ResponseCode::ResponseOk);
 
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(responseMessage, key, iv);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(responseMessage);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
@@ -62,7 +60,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->cast<PutCharMessage>().getChars(), testChars);
 
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(putCharMessage, key, iv);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(putCharMessage);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
@@ -81,7 +79,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveInterval(), 10);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveUsed(), true);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().getConnectionType(), ConnectionType::TypeSlave);
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(connectMessage, key, iv);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(connectMessage);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);

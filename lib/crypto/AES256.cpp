@@ -4,14 +4,16 @@
 #include <openssl/evp.h>
 #include <cstring>
 
-static std::string getAlignedString(const std::string &str, const size_t &desiredLen, char fillChar) {
-  if (str.empty())
-    return {};
+static const int BUF_SIZE = 4096;
+
+static std::string getAlignedString(const std::string &str, const size_t &desiredLen) {
   std::string output;
-  output.assign(desiredLen, fillChar);
-  int len = str.size() > desiredLen ? desiredLen : str.size();
-  for (int i = 0; i < len; i++) {
-    output[i] = str[i];
+  output.assign(desiredLen, ' ');
+  for (int i = 0; i < desiredLen; i++) {
+    if (i <= str.size())
+      output[i] = str[i];
+    else
+      output[i] = i;
   }
   return output;
 }
@@ -20,8 +22,8 @@ std::string Crypto::AES256::encryptData(const std::string &input, const std::str
   std::string output;
   EVP_CIPHER_CTX *ctx;
 
-  std::string key = getAlignedString(userKey, 32, 'k');
-  std::string iv = getAlignedString(userIv, 16, 'i');
+  std::string key = getAlignedString(userKey, 256);
+  std::string iv = getAlignedString(userIv, 256);
 
   int len;
 
@@ -46,8 +48,8 @@ std::string Crypto::AES256::encryptData(const std::string &input, const std::str
    * Provide the message to be encrypted, and obtain the encrypted output.
    * EVP_EncryptUpdate can be called multiple times if necessary
    */
-  auto *cipherText = new unsigned char[2048];
-  memset(cipherText, 0, 2048);
+  auto *cipherText = new unsigned char[BUF_SIZE];
+  memset(cipherText, 0, BUF_SIZE);
   if (1 !=
       EVP_EncryptUpdate(ctx, cipherText, &len, reinterpret_cast<const unsigned char *>(input.c_str()), input.size()))
     return {};
@@ -77,8 +79,8 @@ std::string Crypto::AES256::decryptData(const std::string &input, const std::str
 
   std::string output;
 
-  std::string key = getAlignedString(userKey, 32, 'k');
-  std::string iv = getAlignedString(userIv, 16, 'i');
+  std::string key = getAlignedString(userKey, 256);
+  std::string iv = getAlignedString(userIv, 256);
 
   int len;
 
@@ -103,7 +105,7 @@ std::string Crypto::AES256::decryptData(const std::string &input, const std::str
    * Provide the message to be decrypted, and obtain the plaintext output.
    * EVP_DecryptUpdate can be called multiple times if necessary.
    */
-  auto *plainText = new unsigned char[2048];
+  auto *plainText = new unsigned char[BUF_SIZE];
   if (1 !=
       EVP_DecryptUpdate(ctx, plainText, &len, reinterpret_cast<const unsigned char *>(input.c_str()), input.size()))
     return {};
