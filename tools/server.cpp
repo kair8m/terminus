@@ -3,17 +3,70 @@
 #include <server/Bridge.h>
 #include <server/MessageServer.h>
 
-class TerminusServer : public MessageServer {
-
-};
-
-class TerminusServerApplication {
+class TerminusServerApplication : private MessageServer {
+private:
+  cxxopts::Options options;
 public:
-  TerminusServerApplication() {
-
+  TerminusServerApplication() :
+    MessageServer(),
+    options("Terminus server") {
+    options.add_options()
+      ("v,verbose", "enable verbose output", cxxopts::value<bool>())
+      ("p,port", "specify port", cxxopts::value<int>())
+      ("a,address", "specify listening address", cxxopts::value<std::string>())
+      ("m,max-connections", "specify maximum amount of established connections", cxxopts::value<int>())
+      ("b,buffer-size", "specify buffer size", cxxopts::value<int>())
+      ("t,tcp-no-delay", "enable tcp no delay", cxxopts::value<bool>());
   }
 
   int process(int argc, char **argv) {
+    int port = -1;
+    std::string host = {};
+    bool verbose = false;
+    auto result = parseOptions(argc, argv, port, host, verbose);
+
+    if (result) return result;
+
+    listen(host.c_str(), port);
+    return 0;
+  }
+
+private:
+  void onData(const Buffer &data) override {
+
+  }
+
+  int parseOptions(int argc, char **argv, int &port, std::string &host, bool &verbose) {
+    try {
+      auto result = options.parse(argc, argv);
+      port = result["port"].as<int>();
+      host = result["address"].as<std::string>();
+      verbose = result["verbose"].as<bool>();
+    } catch (const cxxopts::missing_argument_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_has_no_value_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_not_exists_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_not_has_argument_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_not_present_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_required_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_requires_argument_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    } catch (const cxxopts::option_syntax_exception &ex) {
+      DCRITICAL("%s", ex.what());
+      return -1;
+    }
     return 0;
   }
 };

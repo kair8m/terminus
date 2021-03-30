@@ -40,7 +40,9 @@ public:
     /*! print errors, warnings and info */
     LogLevelInfo,
     /*! print everything */
-    LogLevelDebug
+    LogLevelDebug,
+    /*! print critical errors */
+    LogLevelCritical
   };
 
   explicit Logger(LogLevel level);
@@ -71,10 +73,16 @@ public:
     std::cout << std::endl;
   }
 };
-
-#define DINFO(format, arg...)   Logger::log(Logger::LogLevel::LogLevelInfo , KGRN "[%s] INFO  %s %s:%d " format, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
-#define DWARN(format, arg...)   Logger::log(Logger::LogLevel::LogLevelWarn , KYEL "[%s] WARN  %s %s:%d " format, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
-#define DERROR(format, arg...)  Logger::log(Logger::LogLevel::LogLevelErr  , KRED "[%s] ERROR %s %s:%d " format, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
-
+#ifndef RELEASE
+#define DINFO(format, arg...)   Logger::log(Logger::LogLevel::LogLevelInfo , KGRN "[%s] INFO  %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
+#define DWARN(format, arg...)   Logger::log(Logger::LogLevel::LogLevelWarn , KYEL "[%s] WARN  %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
+#define DERROR(format, arg...)  Logger::log(Logger::LogLevel::LogLevelErr  , KRED "[%s] ERROR %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
+#define DCRITICAL(format, arg...)  Logger::log(Logger::LogLevel::LogLevelCritical  , KRED "[%s] CRITICAL_ERROR %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
+#else
+#define DINFO(format, arg...)   Logger::log(Logger::LogLevel::LogLevelInfo , KGRN "[%s] INFO  " format, KWHT, __TIME__, ##arg)
+#define DWARN(format, arg...)   Logger::log(Logger::LogLevel::LogLevelWarn , KYEL "[%s] WARN  " format, KWHT, __TIME__, ##arg)
+#define DERROR(format, arg...)  Logger::log(Logger::LogLevel::LogLevelErr  , KRED "[%s] ERROR " format, KWHT, __TIME__, ##arg)
+#define DCRITICAL(format, arg...)  Logger::log(Logger::LogLevel::LogLevelErr  , KRED "[%s] CRITICAL_ERROR " format, KWHT, __TIME__, ##arg)
+#endif
 
 #endif //TERMINUS_LOGGER_H

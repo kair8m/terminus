@@ -21,8 +21,6 @@ private:
   std::shared_ptr<ClientConsole> fClientConsole;
 public:
   TerminusClientApplication() {
-    fClientConsole = std::make_shared<ClientConsole>();
-    fShellTerminal = std::make_shared<ShellTerminal>();
   }
 
   int process(int argc, char **argv) {

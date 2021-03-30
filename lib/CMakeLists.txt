@@ -52,6 +52,12 @@ add_library(terminus SHARED
   ${libterminus_TERMINAL_SOURCES}
   )
 
+message("-- Build type: ${CMAKE_BUILD_TYPE}")
+
+if (CMAKE_BUILD_TYPE MATCHES RELEASE)
+  target_compile_definitions(terminus PUBLIC RELEASE)
+endif ()
+
 # Specify here the include directories exported
 # by this library
 target_include_directories(terminus PUBLIC

@@ -12,6 +12,8 @@
 
 #include "message/Buffer.h"
 
+#include "logger/Logger.h"
+
 class MessageServer {
 private:
   struct ClientParams {
@@ -28,7 +30,12 @@ public:
 
   }
 
+  ~MessageServer() {
+    stop();
+  }
+
   void listen(const char *host, int &port, int socketFlags = 0) {
+    DWARN("starting listening %s:%d", host, port);
     return bindAndListen(host, port, socketFlags);
   }
 
@@ -37,6 +44,7 @@ public:
     stopRunning = true;
     close(fServerSocket);
     for (auto &item : fClientThreadPool) {
+      DWARN("stopping session with client %s", item.first.c_str());
       close(item.second.socket);
     }
   }
@@ -45,10 +53,10 @@ protected:
 
   virtual void onData(const Buffer &data) {
     if (data.getSize() == 0) {
-      printf("data empty\r\n");
+      DERROR("data empty");
       return;
     }
-    printf("data arrived! size: %zu\r\n", data.getSize());
+    DINFO("data arrived! size: %zu", data.getSize());
   }
 
 private:
@@ -56,6 +64,7 @@ private:
   void bindAndListen(const char *host, int &port, int socketFlags) {
     fServerSocket = createSocket(host, port, socketFlags, fTcpNoDelay);
     if (fServerSocket == -1) {
+      DCRITICAL("createSocket failed");
       return;
     }
 
@@ -64,13 +73,17 @@ private:
       socklen_t addr_len = sizeof(addr);
       if (getsockname(fServerSocket, reinterpret_cast<sockaddr *>(&addr),
                       &addr_len) == -1) {
+        DCRITICAL("getsockname failed");
         return;
       }
       if (addr.ss_family == AF_INET) {
         port = ntohs(reinterpret_cast<sockaddr_in *>(&addr)->sin_port);
+        DWARN("result port: %d", port);
       } else if (addr.ss_family == AF_INET6) {
+        DWARN("result port: %d", port);
         port = ntohs(reinterpret_cast<sockaddr_in6 *>(&addr)->sin6_port);
       } else {
+        DCRITICAL("%s is unable to listen on port %d", host, port);
         return;
       }
     } else return listenInternal();
@@ -82,6 +95,7 @@ private:
       int sock = accept(fServerSocket, nullptr, nullptr);
 
       if (sock == -1) {
+        DERROR("accept failed");
         continue;
       }
 
@@ -97,7 +111,7 @@ private:
 
       fClientThreadPool[str].socket = sock;
       fClientThreadPool[str].t = std::thread([&]() {
-        onNewClient(sock);
+        onNewClient(str, sock);
         close(sock);
         fClientThreadPool.erase(str);
       });
@@ -105,7 +119,8 @@ private:
     }
   }
 
-  void onNewClient(int sock) {
+  void onNewClient(const char* client, int sock) {
+    DINFO("new client connected: %s", client);
     int size;
     auto recvBuffer = new uint8_t[fBufferSize];
     while (true) {
@@ -116,6 +131,7 @@ private:
       onData(buffer);
     }
     delete[] recvBuffer;
+    DWARN("client %s disconnected", client);
   }
 
   bool init(const char *host, int port) {
@@ -150,19 +166,25 @@ private:
 
       int yes = 1;
 
-      if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&yes), sizeof(yes)))
+      if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&yes), sizeof(yes))) {
+        DCRITICAL("failed to set reuse address socket option for socket %d", sock);
         continue;
+      }
 
-      if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<char *>(&yes), sizeof(yes)))
+      if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<char *>(&yes), sizeof(yes))) {
+        DCRITICAL("failed to set reuse port socket option for socket %d", sock);
         continue;
+      }
 
-      if (tcpNoDelay) {
-        setsockopt(sock, IPPROTO_TCP, tcpNoDelay, reinterpret_cast<char *>(&yes), sizeof(yes));
+      if (tcpNoDelay && setsockopt(sock, IPPROTO_TCP, tcpNoDelay, reinterpret_cast<char *>(&yes), sizeof(yes))) {
+        DCRITICAL("failed to set tcp no delay socket option for socket %d", sock);
+        continue;
       }
       if (bindSocket(sock, *rp)) {
         freeaddrinfo(result);
         return sock;
       }
+      DCRITICAL("failed to bind socket %d", sock);
 
       close(sock);
     }

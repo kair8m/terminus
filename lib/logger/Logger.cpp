@@ -25,6 +25,12 @@ void Logger::log(Logger::LogLevel level, const char *format, ...) {
   va_start(args, format);
   auto status = vsnprintf(temp, tempSize, format, args);
   va_end(args);
+
+  if (level == Logger::LogLevel::LogLevelCritical) {
+    std::cout << temp << std::endl;
+    return;
+  }
+
   if (fInstance && (status > 0))
     fInstance->logInternal(level, temp);
   delete[] temp;
