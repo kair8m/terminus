@@ -7,7 +7,8 @@ option(BUILD_APPS "Build main applications" ON)
 add_subdirectory(lib)
 
 if (BUILD_APPS)
-  add_subdirectory(tools)
+  add_subdirectory(client)
+  add_subdirectory(server)
 endif ()
 
 if (BUILD_TESTING)
