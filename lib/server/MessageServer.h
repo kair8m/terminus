@@ -12,11 +12,12 @@
 
 class MessageServer {
 private:
-  const int MAX_CONNECT_QUEUE = 5;
-  const bool TCP_NODELAY = false;
-  const int BUF_SIZE = 4096;
+  static const int MAX_CONNECT_QUEUE = 5;
+  static const bool TCP_NODELAY = false;
+  static const int BUF_SIZE = 4096;
 public:
-  MessageServer() {
+  explicit MessageServer(int bufferSize = BUF_SIZE, bool tcpNoDelay = TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
+    fBufferSize(bufferSize), fTcpNoDelay(tcpNoDelay), fMaxConnectQueue(maxConnectQueue) {
 
   }
 
@@ -25,13 +26,17 @@ public:
   }
 
   virtual void onData(const Buffer &data) {
-
+    if (data.getSize() == 0) {
+      printf("data empty\r\n");
+      return;
+    }
+    printf("data arrived! size: %zu\r\n", data.getSize());
   }
 
 private:
 
   void bindAndListen(const char *host, int port, int socketFlags) {
-    fServerSocket = createSocket(host, port, socketFlags, TCP_NODELAY);
+    fServerSocket = createSocket(host, port, socketFlags, fTcpNoDelay);
     if (fServerSocket == -1) {
       return;
     }
@@ -69,9 +74,9 @@ private:
 
   void onNewClient(int sock) {
     int size = 0;
-    auto recvBuffer = new uint8_t[BUF_SIZE];
+    auto recvBuffer = new uint8_t[fBufferSize];
     while (true) {
-      size = recv(sock,recvBuffer, BUF_SIZE, 0);
+      size = recv(sock, recvBuffer, fBufferSize, 0);
       if (size == -1)
         break;
       Buffer buffer(recvBuffer, size);
@@ -83,6 +88,7 @@ private:
     fServerSocket = createSocket(host, port, 0, false);
     if (fServerSocket <= 0)
       return false;
+    return true;
   }
 
   int createSocket(const char *host, int port, int socketFlags, bool tcpNoDelay) {
@@ -128,20 +134,17 @@ private:
     if (::bind(sock, ai.ai_addr, static_cast<socklen_t>(ai.ai_addrlen))) {
       return false;
     }
-    if (::listen(sock, MAX_CONNECT_QUEUE)) {
+    if (::listen(sock, fMaxConnectQueue)) {
       return false;
     }
     return true;
   }
 
-  void listenThread() {
-    while () {
-
-    }
-  }
-
 private:
   int fServerSocket = -1;
+  int fBufferSize = -1;
+  int fMaxConnectQueue = -1;
+  bool fTcpNoDelay = false;
   sockaddr_in fAddress = {};
 };
 
