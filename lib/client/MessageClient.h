@@ -22,6 +22,7 @@ public:
 
   ~MessageClient() {
     if (fSocket == -1) return;
+    DWARN("disconnecting from %s", inet_ntoa(fServerAddress.sin_addr));
     fReceiveThread.detach();
     close(fSocket);
   }
@@ -31,6 +32,7 @@ public:
 
     fSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fSocket == -1) { //socket failed
+      DCRITICAL("failed to create socket");
       perror("create socket failed");
       return false;
     }
@@ -42,6 +44,7 @@ public:
       struct in_addr **addrList;
       if ((host = gethostbyname(address.c_str())) == nullptr) {
         perror("Failed to resolve hostname");
+        DCRITICAL("Failed to resolve hostname");
         return false;
       }
       addrList = (struct in_addr **) host->h_addr_list;
@@ -52,7 +55,9 @@ public:
 
     int connectRet = ::connect(fSocket, (struct sockaddr *) &fServerAddress, sizeof(fServerAddress));
     if (connectRet == -1) {
+      DCRITICAL("");
       perror("connect failed");
+      DCRITICAL("connect failed");
       return false;
     }
     fReceiveThread = std::thread(&MessageClient::receiveTask, this);
@@ -63,9 +68,11 @@ public:
     int numBytesSent = send(fSocket, msg, size, 0);
     if (numBytesSent < 0) { // send failed
       perror("send failed");
+      DCRITICAL("send failed");
       return false;
     }
     if ((uint) numBytesSent < size) { // not all bytes were sent
+      DERROR("not all bytes were sent, requested size: %d, result: %d", size, numBytesSent);
       return false;
     }
     return true;
@@ -75,10 +82,10 @@ protected:
 
   virtual void onReceivedData(const Buffer &data) {
     if (data.getSize() == 0) {
-      printf("data empty\r\n");
+      DERROR("data empty");
       return;
     }
-    printf("data arrived! size: %zu\r\n", data.getSize());
+    DINFO("data arrived! size: %zu", data.getSize());
   }
 
 private:
