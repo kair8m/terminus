@@ -7,10 +7,17 @@
 #include <thread>
 #include <fcntl.h>
 #include <armadillo>
+#include <condition_variable>
+#include <arpa/inet.h>
 
 #include "message/Buffer.h"
 
 class MessageServer {
+private:
+  struct ClientParams {
+    int socket;
+    std::thread t;
+  };
 private:
   static const int MAX_CONNECT_QUEUE = 5;
   static const bool TCP_NODELAY = false;
@@ -21,9 +28,20 @@ public:
 
   }
 
-  void listen(const char *host, int port, int socketFlags = 0) {
+  void listen(const char *host, int &port, int socketFlags = 0) {
     return bindAndListen(host, port, socketFlags);
   }
+
+  void stop() {
+    if (!isRunning) return;
+    stopRunning = true;
+    close(fServerSocket);
+    for (auto &item : fClientThreadPool) {
+      close(item.second.socket);
+    }
+  }
+
+protected:
 
   virtual void onData(const Buffer &data) {
     if (data.getSize() == 0) {
@@ -35,7 +53,7 @@ public:
 
 private:
 
-  void bindAndListen(const char *host, int port, int socketFlags) {
+  void bindAndListen(const char *host, int &port, int socketFlags) {
     fServerSocket = createSocket(host, port, socketFlags, fTcpNoDelay);
     if (fServerSocket == -1) {
       return;
@@ -59,21 +77,36 @@ private:
   }
 
   void listenInternal() {
+    isRunning = true;
     while (fServerSocket != -1) {
       int sock = accept(fServerSocket, nullptr, nullptr);
 
       if (sock == -1) {
         continue;
       }
-      std::thread([&]() {
+
+      sockaddr_in peer = {};
+
+      socklen_t peerLen = sizeof(peer);
+
+      getpeername(sock, (sockaddr *) &peer, &peerLen);
+
+      char str[INET_ADDRSTRLEN];
+
+      inet_ntop(AF_INET, &(peer.sin_addr), str, INET_ADDRSTRLEN);
+
+      fClientThreadPool[str].socket = sock;
+      fClientThreadPool[str].t = std::thread([&]() {
         onNewClient(sock);
         close(sock);
+        fClientThreadPool.erase(str);
       });
+      fClientThreadPool[str].t.detach();
     }
   }
 
   void onNewClient(int sock) {
-    int size = 0;
+    int size;
     auto recvBuffer = new uint8_t[fBufferSize];
     while (true) {
       size = recv(sock, recvBuffer, fBufferSize, 0);
@@ -82,6 +115,7 @@ private:
       Buffer buffer(recvBuffer, size);
       onData(buffer);
     }
+    delete[] recvBuffer;
   }
 
   bool init(const char *host, int port) {
@@ -114,8 +148,15 @@ private:
       if (fcntl(sock, F_SETFD, FD_CLOEXEC) == -1)
         continue;
 
+      int yes = 1;
+
+      if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&yes), sizeof(yes)))
+        continue;
+
+      if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<char *>(&yes), sizeof(yes)))
+        continue;
+
       if (tcpNoDelay) {
-        int yes = 1;
         setsockopt(sock, IPPROTO_TCP, tcpNoDelay, reinterpret_cast<char *>(&yes), sizeof(yes));
       }
       if (bindSocket(sock, *rp)) {
@@ -145,7 +186,11 @@ private:
   int fBufferSize = -1;
   int fMaxConnectQueue = -1;
   bool fTcpNoDelay = false;
-  sockaddr_in fAddress = {};
+  bool isRunning = false;
+
+  bool stopRunning = false;
+
+  std::map<const std::string, ClientParams> fClientThreadPool;
 };
 
 
