@@ -50,7 +50,7 @@ public:
         auto size = buffer.get<uint16_t>();
         auto charVector = buffer.get<char>(size);
         std::string chars = Crypto::AES256::decryptData(charVector.data(), Crypto::magicKey, Crypto::magicIv);
-        return parse((const uint8_t *)(chars.data()), chars.size());
+        return parse((const uint8_t *) (chars.data()), chars.size());
       }
       default:
         return nullptr;

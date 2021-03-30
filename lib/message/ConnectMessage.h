@@ -66,7 +66,7 @@ public:
       return;
     auto connectionType = msg.getBuffer().get<uint32_t>();
     fConnectOptions.setConnectionType(static_cast<ConnectionType>(connectionType));
-    if(msg.getBuffer().get<uint8_t>())
+    if (msg.getBuffer().get<uint8_t>())
       fConnectOptions.useKeepAlive(msg.getBuffer().get<uint16_t>());
   }
 
