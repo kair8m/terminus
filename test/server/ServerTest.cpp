@@ -9,7 +9,7 @@ class TestServer : public MessageServer {
   }
 };
 
-TEST(BufferTest, FieldTest) {
+TEST(ServerTest, network) {
   TestServer messageServer;
   int port = 1234;
   std::thread([&] {
