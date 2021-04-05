@@ -57,7 +57,7 @@ public:
 
     ConnectMessage::Ptr connectMessage = MessageFactory::create<ConnectMessage>(opts);
     auto msg = MessageFactory::create<EncryptedMessage>(connectMessage, fServerLogin, fServerKey);
-    fMessageClient->sendMsg((char*)msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
+    fMessageClient->sendMsg((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
 
     return 0;
   }
@@ -76,7 +76,7 @@ private:
       applicationType = result["type"].as<std::string>();
       clientId = result["identifier"].as<std::string>();
       if (applicationType != "master" && applicationType != "slave") return false;
-    } catch(...) {
+    } catch (...) {
       return false;
     }
     return true;

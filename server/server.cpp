@@ -56,7 +56,7 @@ private:
         return responseMessageHandler();
       case ConnectMessage::id:
         DINFO("received connect msg");
-        return connectMessageHandler(client,parseResult);
+        return connectMessageHandler(client, parseResult);
     }
     return processClientMessage(client, parseResult->getBuffer());
   }
@@ -90,7 +90,7 @@ private:
       verbose = result["verbose"].as<bool>();
       serverLogin = result["login"].as<std::string>();
       serverKey = result["key"].as<std::string>();
-    } catch(...) {
+    } catch (...) {
       return false;
     }
     return true;
