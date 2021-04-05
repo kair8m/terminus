@@ -19,8 +19,8 @@ static std::string getAlignedString(const std::string &str, const size_t &desire
 }
 
 std::string Crypto::AES256::encryptData(const std::string &input, const std::string &userKey, const std::string &userIv) {
-  auto key = getAlignedString(userKey, 32);
-  auto iv = getAlignedString(userIv, 16);
+  auto key = getAlignedString(userKey, 256);
+  auto iv = getAlignedString(userIv, 256);
   auto size = input.length() * 10;
   auto buffer = new char[size];
   auto len = encrypt((uint8_t *) input.c_str(), input.length(), (uint8_t *) key.c_str(), (uint8_t *) iv.c_str(), (uint8_t *) buffer);
@@ -35,8 +35,8 @@ std::string Crypto::AES256::encryptData(const std::string &input, const std::str
 
 
 std::string Crypto::AES256::decryptData(const std::string &input, const std::string &userKey, const std::string &userIv) {
-  auto key = getAlignedString(userKey, 32);
-  auto iv = getAlignedString(userIv, 16);
+  auto key = getAlignedString(userKey, 256);
+  auto iv = getAlignedString(userIv, 256);
   auto size = input.length() * 10;
   auto buffer = new char[size];
   auto len = decrypt((uint8_t *) input.c_str(), input.length(), (uint8_t *) key.c_str(), (uint8_t *) iv.c_str(), (uint8_t *) buffer);

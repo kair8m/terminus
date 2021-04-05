@@ -8,8 +8,8 @@ TEST(MessageTest, ParserTest) {
   EncryptedMessage::Ptr encryptedMessage;
 
   // init message parser
-  std::string key = "testkey1asdfasdfasdfasdf";
-  std::string iv = "testiv1asdfasdfsdfgsdgfhdfgfgbn";
+  std::string key = "1ZNDH6P00ABZJN";
+  std::string iv = "dji-alpha";
   MessageParser messageParser(key, iv);
 
   //test resize terminal message
@@ -31,8 +31,8 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getHeight(), resizeTerminalMessage->getHeight());
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getWidth(), resizeTerminalMessage->getWidth());
 
-  key = "asdofoishdofiahsdf";
-  iv = "asda123sokjdgfs";
+  key = "1ZNDH8500BM3KW";
+  iv = "dji-gamma";
   messageParser.setKey(key);
   messageParser.setIv(iv);
 
@@ -57,8 +57,8 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getResponseCode(), ResponseCode::ResponseOk);
 
 
-  key = "asdfnosdivouisbdcobyv";
-  iv = "sajdbfudvascygvashjdbfhjasvd";
+  key = "1ZNDH7H00A52Z8";
+  iv = "dji-delta";
   messageParser.setKey(key);
   messageParser.setIv(iv);
 
@@ -77,8 +77,8 @@ TEST(MessageTest, ParserTest) {
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->cast<PutCharMessage>().getChars(), testChars);
 
-  key = "asdfasdyubvgfiavswdfkjabskcdubvguacv";
-  iv = "dsbftyvgusydvaeghwvedyuvquy1234234";
+  key = "1ZNDH9B00CD247";
+  iv = "dji-epsilon";
   messageParser.setKey(key);
   messageParser.setIv(iv);
 
@@ -96,6 +96,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveInterval(), 10);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveUsed(), true);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().getConnectionType(), ConnectionType::TypeSlave);
+  ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().getClientId(), clientId);
   encryptedMessage = MessageFactory::create<EncryptedMessage>(connectMessage, key, iv);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
