@@ -73,6 +73,7 @@ public:
     std::cout << std::endl;
   }
 };
+
 #ifndef RELEASE
 #define DINFO(format, arg...)   Logger::log(Logger::LogLevel::LogLevelInfo , KGRN "[%s] INFO  %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)
 #define DWARN(format, arg...)   Logger::log(Logger::LogLevel::LogLevelWarn , KYEL "[%s] WARN  %s %s:%d " format KWHT, __TIME__, __FUNCTION__, __FILE__, __LINE__, ##arg)

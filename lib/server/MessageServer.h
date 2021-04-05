@@ -9,6 +9,7 @@
 #include <armadillo>
 #include <condition_variable>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 
 #include "message/Buffer.h"
 
@@ -22,16 +23,34 @@ private:
   };
 private:
   static const int MAX_CONNECT_QUEUE = 5;
-  static const bool TCP_NODELAY = false;
+  static const bool ENABLE_TCP_NODELAY = false;
   static const int BUF_SIZE = 4096;
+  static const int KEEPALIVE_MAXCOUNT = 10;
+private:
+  int fServerSocket = -1;
+  int fBufferSize = -1;
+  int fMaxConnectQueue = -1;
+  bool fTcpNoDelay = false;
+  bool isRunning = false;
+  bool stopRunning = false;
+  std::map<const std::string, ClientParams> fClientThreadPool;
+  bool fKeepAlive = false;
+  int fKeepAliveInterval = -1;
+  std::mutex fMutex;
+
 public:
-  explicit MessageServer(int bufferSize = BUF_SIZE, bool tcpNoDelay = TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
+  explicit MessageServer(int bufferSize = BUF_SIZE, bool tcpNoDelay = ENABLE_TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
     fBufferSize(bufferSize), fTcpNoDelay(tcpNoDelay), fMaxConnectQueue(maxConnectQueue) {
 
   }
 
   ~MessageServer() {
     stop();
+  }
+
+  void enableKeepAlive(int keepAliveInterval, int maxDropPackets = KEEPALIVE_MAXCOUNT) {
+    fKeepAliveInterval = keepAliveInterval;
+    fKeepAlive = true;
   }
 
   void listen(const char *host, int &port, int socketFlags = 0) {
@@ -41,6 +60,7 @@ public:
 
   void stop() {
     if (!isRunning) return;
+    std::lock_guard<std::mutex> lock(fMutex);
     stopRunning = true;
     close(fServerSocket);
     for (auto &item : fClientThreadPool) {
@@ -49,15 +69,31 @@ public:
     }
   }
 
+  bool sendTo(const char *client, const Buffer &data) {
+    std::lock_guard<std::mutex> lock(fMutex);
+    auto item = fClientThreadPool.find(client);
+    if (item == fClientThreadPool.end()) {
+      DERROR("couldn't find client %s in client thread pool", client);
+      return false;
+    }
+    if (send(item->second.socket, data.getDataPtr(), data.getSize(), 0) < 0) return false;
+
+    return true;
+  }
+
 protected:
 
-  virtual bool onData(const Buffer &data) {
+  virtual bool onData(const Buffer &data, const char *client) {
     if (data.getSize() == 0) {
       DERROR("data empty");
       return false;
     }
     DINFO("data arrived! size: %zu", data.getSize());
     return true;
+  }
+
+  virtual void onClientDisconnected(const char *client) {
+    DERROR("client %s has disconnected");
   }
 
 private:
@@ -106,21 +142,36 @@ private:
 
       getpeername(sock, (sockaddr *) &peer, &peerLen);
 
-      char str[INET_ADDRSTRLEN];
+      char client[INET_ADDRSTRLEN];
 
-      inet_ntop(AF_INET, &(peer.sin_addr), str, INET_ADDRSTRLEN);
+      inet_ntop(AF_INET, &(peer.sin_addr), client, INET_ADDRSTRLEN);
 
-      fClientThreadPool[str].socket = sock;
-      fClientThreadPool[str].t = std::thread([&]() {
-        onNewClient(str, sock);
+      if (fKeepAlive && !setKeepAlive(sock, fKeepAliveInterval, KEEPALIVE_MAXCOUNT)) {
+        DERROR("failed to setup keepalive for client %s", client);
         close(sock);
-        fClientThreadPool.erase(str);
+        continue;
+      }
+
+      std::lock_guard<std::mutex> lock(fMutex);
+
+      if (fClientThreadPool.find(client) != fClientThreadPool.end()) {
+        DERROR("refusing connection due to multiple accessing!");
+        close(sock);
+        continue;
+      }
+
+      fClientThreadPool[client].socket = sock;
+      fClientThreadPool[client].t = std::thread([this, &client, &sock]() {
+        onNewClient(client, sock);
+        close(sock);
+        fClientThreadPool.erase(client);
+        onClientDisconnected(client);
       });
-      fClientThreadPool[str].t.detach();
+      fClientThreadPool[client].t.detach();
     }
   }
 
-  void onNewClient(const char* client, int sock) {
+  void onNewClient(const char *client, int sock) {
     DINFO("new client connected: %s", client);
     int size;
     auto recvBuffer = new uint8_t[fBufferSize];
@@ -129,7 +180,7 @@ private:
       if (size == -1)
         break;
       Buffer buffer(recvBuffer, size);
-      if (!onData(buffer))
+      if (!onData(buffer, client))
         break;
     }
     delete[] recvBuffer;
@@ -205,16 +256,32 @@ private:
     return true;
   }
 
-private:
-  int fServerSocket = -1;
-  int fBufferSize = -1;
-  int fMaxConnectQueue = -1;
-  bool fTcpNoDelay = false;
-  bool isRunning = false;
+  static bool setKeepAlive(int sock, int keepAliveInterval, int maxDropPackets) {
+    int yes = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int))) {
+      DCRITICAL("failed to set keep alive flag to socket %d", sock);
+      return false;
+    }
 
-  bool stopRunning = false;
+    int idle = 1;
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))) {
+      DCRITICAL("failed to set keep idle flag to socket %d", sock);
+      return false;
+    }
 
-  std::map<const std::string, ClientParams> fClientThreadPool;
+    int interval = keepAliveInterval;
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(int))) {
+      DCRITICAL("failed to set keep interval flag to socket %d", sock);
+      return false;
+    }
+
+    int maxpkt = maxDropPackets;
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &maxpkt, sizeof(int))) {
+      DCRITICAL("failed to set keep count flag to socket %d", sock);
+      return false;
+    }
+    return true;
+  }
 };
 
 

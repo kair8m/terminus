@@ -22,8 +22,8 @@ std::string Crypto::AES256::encryptData(const std::string &input, const std::str
   auto key = getAlignedString(userKey, 32);
   auto iv = getAlignedString(userIv, 16);
   auto size = input.length() * 10;
-  auto buffer = new char [size];
-  auto len = encrypt((uint8_t *)input.c_str(), input.length(), (uint8_t *)key.c_str(), (uint8_t *)iv.c_str(), (uint8_t*) buffer);
+  auto buffer = new char[size];
+  auto len = encrypt((uint8_t *) input.c_str(), input.length(), (uint8_t *) key.c_str(), (uint8_t *) iv.c_str(), (uint8_t *) buffer);
   if (len < 0) {
     delete[] buffer;
     return {};
@@ -38,8 +38,8 @@ std::string Crypto::AES256::decryptData(const std::string &input, const std::str
   auto key = getAlignedString(userKey, 32);
   auto iv = getAlignedString(userIv, 16);
   auto size = input.length() * 10;
-  auto buffer = new char [size];
-  auto len = decrypt((uint8_t *)input.c_str(), input.length(), (uint8_t *)key.c_str(), (uint8_t *)iv.c_str(), (uint8_t*) buffer);
+  auto buffer = new char[size];
+  auto len = decrypt((uint8_t *) input.c_str(), input.length(), (uint8_t *) key.c_str(), (uint8_t *) iv.c_str(), (uint8_t *) buffer);
   if (len < 0) {
     delete[] buffer;
     return {};
