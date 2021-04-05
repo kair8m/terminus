@@ -33,9 +33,9 @@ public:
 
   int process(int argc, char **argv) {
     auto result = parseOptions(argc, argv, fServerPort, fServerAddress, fVerbose, fServerLogin, fServerKey);
-    if (result) {
+    if (!result) {
       DCRITICAL("%s", fOptions.help().c_str());
-      return result;
+      return -1;
     }
     if (fVerbose) Logger::init(Logger::LogLevel::LogLevelDebug);
     fMessageParser = std::make_shared<MessageParser>(fServerLogin, fServerKey);
@@ -82,7 +82,7 @@ private:
     return false;
   }
 
-  int parseOptions(int argc, char **argv, int &port, std::string &host, bool &verbose, std::string &serverLogin, std::string &serverKey) {
+  bool parseOptions(int argc, char **argv, int &port, std::string &host, bool &verbose, std::string &serverLogin, std::string &serverKey) {
     try {
       auto result = fOptions.parse(argc, argv);
       port = result["port"].as<int>();
@@ -91,9 +91,9 @@ private:
       serverLogin = result["login"].as<std::string>();
       serverKey = result["key"].as<std::string>();
     } catch(...) {
-      return -1;
+      return false;
     }
-    return 0;
+    return true;
   }
 };
 
