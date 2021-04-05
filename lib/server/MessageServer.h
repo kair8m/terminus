@@ -51,12 +51,13 @@ public:
 
 protected:
 
-  virtual void onData(const Buffer &data) {
+  virtual bool onData(const Buffer &data) {
     if (data.getSize() == 0) {
       DERROR("data empty");
-      return;
+      return false;
     }
     DINFO("data arrived! size: %zu", data.getSize());
+    return true;
   }
 
 private:
@@ -128,7 +129,8 @@ private:
       if (size == -1)
         break;
       Buffer buffer(recvBuffer, size);
-      onData(buffer);
+      if (!onData(buffer))
+        break;
     }
     delete[] recvBuffer;
     DWARN("client %s disconnected", client);

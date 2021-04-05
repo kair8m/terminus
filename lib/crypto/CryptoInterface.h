@@ -14,11 +14,17 @@ namespace Crypto {
    * @note iv is optional
    * @warning undefined behaviour if key and iv are equal
    */
-  namespace AES256 {
-    std::string encryptData(const std::string &input, const std::string &key, const std::string &iv);
+  class AES256 {
+  public:
+    static std::string encryptData(const std::string &input, const std::string &key, const std::string &iv);
 
-    std::string decryptData(const std::string &input, const std::string &key, const std::string &iv);
-  }
+    static std::string decryptData(const std::string &input, const std::string &key, const std::string &iv);
+
+  private:
+    static int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key, unsigned char *iv, unsigned char *ciphertext);
+
+    static int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key, unsigned char *iv, unsigned char *plaintext);
+  };
 }
 
 #endif //TERMINUS_CRYPTOINTERFACE_H

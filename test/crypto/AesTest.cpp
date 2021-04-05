@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "crypto/CryptoInterface.h"
+#include <openssl/evp.h>
 
 
 TEST(AesTest, EncryptDecryptTest) {

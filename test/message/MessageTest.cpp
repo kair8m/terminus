@@ -8,7 +8,9 @@ TEST(MessageTest, ParserTest) {
   EncryptedMessage::Ptr encryptedMessage;
 
   // init message parser
-  MessageParser messageParser;
+  std::string key = "testkey1asdfasdfasdfasdf";
+  std::string iv = "testiv1asdfasdfsdfgsdgfhdfgfgbn";
+  MessageParser messageParser(key, iv);
 
   //test resize terminal message
   auto resizeTerminalMessage = MessageFactory::create<ResizeTerminalMessage>(10, 10);
@@ -21,7 +23,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getHeight(), resizeTerminalMessage->getHeight());
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getWidth(), resizeTerminalMessage->getWidth());
   ASSERT_TRUE(messageParser.parse(nullptr, 0) == nullptr);
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(resizeTerminalMessage);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(resizeTerminalMessage, key, iv);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
@@ -29,6 +31,10 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getHeight(), resizeTerminalMessage->getHeight());
   ASSERT_EQ(parseResult->cast<ResizeTerminalMessage>().getWidth(), resizeTerminalMessage->getWidth());
 
+  key = "asdofoishdofiahsdf";
+  iv = "asda123sokjdgfs";
+  messageParser.setKey(key);
+  messageParser.setIv(iv);
 
   //test response message
   nlohmann::json testData;
@@ -43,13 +49,18 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getMetaData()["Token"], testToken);
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getResponseCode(), ResponseCode::ResponseOk);
 
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(responseMessage);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(responseMessage, key, iv);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getMetaData()["Token"], testToken);
   ASSERT_EQ(parseResult->cast<ResponseMessage>().getResponseCode(), ResponseCode::ResponseOk);
 
+
+  key = "asdfnosdivouisbdcobyv";
+  iv = "sajdbfudvascygvashjdbfhjasvd";
+  messageParser.setKey(key);
+  messageParser.setIv(iv);
 
   //test putchar message
   std::string testChars = "12345789";
@@ -60,12 +71,16 @@ TEST(MessageTest, ParserTest) {
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->cast<PutCharMessage>().getChars(), testChars);
 
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(putCharMessage);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(putCharMessage, key, iv);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);
   ASSERT_EQ(parseResult->cast<PutCharMessage>().getChars(), testChars);
 
+  key = "asdfasdyubvgfiavswdfkjabskcdubvguacv";
+  iv = "dsbftyvgusydvaeghwvedyuvquy1234234";
+  messageParser.setKey(key);
+  messageParser.setIv(iv);
 
   //test connect message
   ConnectOptions connectOptions(ConnectionType::TypeSlave, true, 10);
@@ -79,7 +94,7 @@ TEST(MessageTest, ParserTest) {
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveInterval(), 10);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().keepAliveUsed(), true);
   ASSERT_EQ(parseResult->cast<ConnectMessage>().getConnectOptions().getConnectionType(), ConnectionType::TypeSlave);
-  encryptedMessage = MessageFactory::create<EncryptedMessage>(connectMessage);
+  encryptedMessage = MessageFactory::create<EncryptedMessage>(connectMessage, key, iv);
   parseResult = messageParser.parse(encryptedMessage->getBuffer().getDataPtr(),
                                     encryptedMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);

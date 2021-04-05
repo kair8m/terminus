@@ -13,10 +13,29 @@
 class MessageParser {
 public:
   using Ptr = std::shared_ptr<MessageParser>;
+private:
+  std::string fKey, fIv;
 public:
-  explicit MessageParser() = default;
+  explicit MessageParser(std::string key, std::string iv) : fKey(std::move(key)), fIv(std::move(iv)) {
+  }
 
-  static std::shared_ptr<Message> parse(const uint8_t *data, size_t len) {
+  void setKey(const std::string &key) {
+    fKey = key;
+  }
+
+  void setIv(const std::string &iv) {
+    fIv = iv;
+  }
+
+  const std::string &getKey() const {
+    return fKey;
+  }
+
+  const std::string &getIv(const std::string &iv) const {
+    return fIv;
+  }
+
+  std::shared_ptr<Message> parse(const uint8_t *data, size_t len) const {
     Buffer buffer(data, len);
     auto id = buffer.get<uint32_t>();
     switch (id) {
@@ -49,7 +68,7 @@ public:
       case EncryptedMessage::id: {
         auto size = buffer.get<uint16_t>();
         auto charVector = buffer.get<char>(size);
-        std::string chars = Crypto::AES256::decryptData(charVector.data(), Crypto::magicKey, Crypto::magicIv);
+        std::string chars = Crypto::AES256::decryptData(charVector.data(), fKey, fIv);
         return parse((const uint8_t *) (chars.data()), chars.size());
       }
       default:

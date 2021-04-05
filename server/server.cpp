@@ -2,6 +2,7 @@
 #include <cxxopts.hpp>
 #include <server/Bridge.h>
 #include <server/MessageServer.h>
+#include <message/MessageParser.h>
 
 class TerminusServerApplication : private MessageServer {
 private:
@@ -24,16 +25,34 @@ public:
     std::string host = {};
     bool verbose = false;
     auto result = parseOptions(argc, argv, port, host, verbose);
-
+    if (verbose) Logger::init(Logger::LogLevel::LogLevelDebug);
     if (result) return result;
-
     listen(host.c_str(), port);
     return 0;
   }
 
 private:
-  void onData(const Buffer &data) override {
-
+  bool onData(const Buffer &data) override {
+    auto parseResult = MessageParser::parse(data.getDataPtr(), data.getSize());
+    if (!parseResult) {
+      DERROR("failed to parse incoming data");
+      return false;
+    }
+    switch (parseResult->getId()) {
+      case PutCharMessage::id:
+        DINFO("received put char msg");
+        break;
+      case ResizeTerminalMessage::id:
+        DINFO("received resize terminal msg");
+        break;
+      case ResponseMessage::id:
+        DINFO("received response msg");
+        break;
+      case ConnectMessage::id:
+        DINFO("received connect msg");
+        break;
+    }
+    return false;
   }
 
   int parseOptions(int argc, char **argv, int &port, std::string &host, bool &verbose) {

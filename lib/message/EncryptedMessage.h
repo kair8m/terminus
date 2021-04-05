@@ -9,10 +9,10 @@ class EncryptedMessage : public Message {
 public:
   const static uint32_t id = 0xC7A469E3;
 public:
-  EncryptedMessage(const Message::Ptr &msg) : Message() {
+  explicit EncryptedMessage(const Message::Ptr &msg, const std::string &key, const std::string &iv) : Message() {
     fBuffer.append(id);
     std::string data((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
-    auto encryptedData = Crypto::AES256::encryptData(data, Crypto::magicKey, Crypto::magicIv);
+    auto encryptedData = Crypto::AES256::encryptData(data, key, iv);
     fBuffer.append((uint16_t) encryptedData.size());
     fBuffer.append(encryptedData);
   }
