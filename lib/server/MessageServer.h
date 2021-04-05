@@ -37,6 +37,8 @@ private:
   bool fKeepAlive = false;
   int fKeepAliveInterval = -1;
   std::mutex fMutex;
+  std::map<const std::string, std::string> fRedirectMasterPool;
+  std::map<const std::string, std::string> fRedirectSlavePool;
 
 public:
   explicit MessageServer(int bufferSize = BUF_SIZE, bool tcpNoDelay = ENABLE_TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
@@ -67,6 +69,15 @@ public:
       DWARN("stopping session with client %s", item.first.c_str());
       close(item.second.socket);
     }
+  }
+
+  bool createBridge(const std::string &master, const std::string &slave) {
+    if (fClientThreadPool.find(master) == fClientThreadPool.end()) return false;
+    if (fClientThreadPool.find(slave) == fClientThreadPool.end()) return false;
+    if (fRedirectMasterPool.find(master) != fRedirectMasterPool.end()) return false;
+    if (fRedirectSlavePool.find(slave) != fRedirectMasterPool.end()) return false;
+    fRedirectMasterPool[master] = slave;
+    fRedirectSlavePool[slave] = master;
   }
 
   bool sendTo(const char *client, const Buffer &data) {
@@ -164,7 +175,7 @@ private:
 
       fClientThreadPool[remote].socket = sock;
       fClientThreadPool[remote].t = std::thread([this, &remote, &sock]() {
-        onNewClient(remote.c_str(), sock);
+        clientHandler(remote.c_str(), sock);
         close(sock);
         fClientThreadPool.erase(remote);
         onClientDisconnected(remote.c_str());
@@ -173,15 +184,30 @@ private:
     }
   }
 
-  void onNewClient(const char *client, int sock) {
+  void clientHandler(const char *client, int sock) {
     DINFO("new client connected: %s", client);
     int size;
     auto recvBuffer = new uint8_t[fBufferSize];
+    std::string redirectPeer = {};
     while (true) {
       size = recv(sock, recvBuffer, fBufferSize, 0);
       if (size <= 0)
         break;
       Buffer buffer(recvBuffer, size);
+
+      if (redirectPeer.empty()) {
+        if (fRedirectMasterPool.find(client) != fRedirectMasterPool.end()) redirectPeer = fRedirectMasterPool.find(client)->second;
+        else if (fRedirectSlavePool.find(client) != fRedirectSlavePool.end()) redirectPeer = fRedirectSlavePool.find(client)->second;
+      }
+
+      if (!redirectPeer.empty()) {
+        if (!sendTo(redirectPeer.c_str(), buffer)) {
+          DERROR("failed to send data to remote peer %s", redirectPeer.c_str());
+          break;
+        }
+        continue;
+      }
+
       if (!onData(buffer, client))
         break;
     }

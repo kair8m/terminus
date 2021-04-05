@@ -15,7 +15,7 @@ private:
   std::string fServerAddress;
   int fServerPort = -1;
   bool fVerbose = false;
-  std::map<std::string, SessionInfo> fSessionInfoMap;
+  std::map<std::string, std::string> slavePool;
 public:
   TerminusServerApplication() :
     MessageServer(),
@@ -69,12 +69,25 @@ private:
     return false;
   }
 
-  bool connectMessageHandler(const char *client, std::shared_ptr<Message> &parseResult) const {
+  bool connectMessageHandler(const char *client, std::shared_ptr<Message> &parseResult) {
+    auto clientId = parseResult->cast<ConnectMessage>().getConnectOptions().getClientId();
     if (parseResult->cast<ConnectMessage>().getConnectOptions().getConnectionType() == ConnectionType::TypeMaster) {
-
+      // search client id in current slave pool
+      auto item = slavePool.find(clientId);
+      if (item == slavePool.end()) {
+        DERROR("client %s wants to connect to slave %s, but slave hasn't registered yet", client, clientId.c_str());
+        return false;
+      }
+      // mark remote peer as master for future bridge redirection
+      createBridge(client, item->second);
+      DINFO("client %s registered as master", client);
     }
-
-
+    // check if slave with current id already exists
+    auto item = slavePool.find(clientId);
+    if (item != slavePool.end()) return false;
+    // mark remote peer as slave for future bridge redirection
+    slavePool[clientId] = client;
+    DINFO("client %s registered as slave", client);
     return true;
   }
 
