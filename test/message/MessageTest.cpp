@@ -83,11 +83,13 @@ TEST(MessageTest, ParserTest) {
   messageParser.setIv(iv);
 
   //test connect message
-  ConnectOptions connectOptions(ConnectionType::TypeSlave, true, 10);
+  auto clientId = "test";
+  ConnectOptions connectOptions(ConnectionType::TypeSlave, clientId, true, 10);
   auto connectMessage = MessageFactory::create<ConnectMessage>(connectOptions);
   ASSERT_EQ(connectMessage->getConnectOptions().keepAliveInterval(), 10);
   ASSERT_EQ(connectMessage->getConnectOptions().keepAliveUsed(), true);
   ASSERT_EQ(connectMessage->getConnectOptions().getConnectionType(), ConnectionType::TypeSlave);
+  ASSERT_EQ(connectMessage->getConnectOptions().getClientId(), clientId);
   parseResult = messageParser.parse(connectMessage->getBuffer().getDataPtr(),
                                     connectMessage->getBuffer().getSize());
   ASSERT_TRUE(parseResult != nullptr);

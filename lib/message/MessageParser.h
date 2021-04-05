@@ -41,9 +41,13 @@ public:
     switch (id) {
       case ConnectMessage::id: {
         auto connectionType = buffer.get<uint32_t>();
+        auto clientIdLen = buffer.get<uint32_t>();
+        auto charVector = buffer.get<char>(clientIdLen);
         bool keepAliveUsed = buffer.get<uint8_t>();
         uint16_t keepAliveInterval = buffer.get<uint8_t>();
-        auto connectOpts = ConnectOptions(static_cast<ConnectionType>(connectionType), keepAliveUsed, keepAliveInterval);
+        auto connectOpts = ConnectOptions(static_cast<ConnectionType>(connectionType),
+                                          std::string(charVector.begin(), charVector.end()),
+                                          keepAliveUsed, keepAliveInterval);
         return MessageFactory::create<ConnectMessage>(connectOpts);
       }
       case PutCharMessage::id: {
