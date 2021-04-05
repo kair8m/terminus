@@ -160,14 +160,16 @@ private:
         continue;
       }
 
-      fClientThreadPool[client].socket = sock;
-      fClientThreadPool[client].t = std::thread([this, &client, &sock]() {
-        onNewClient(client, sock);
+      std::string remote = client + std::string(":") + std::to_string(peer.sin_port);
+
+      fClientThreadPool[remote].socket = sock;
+      fClientThreadPool[remote].t = std::thread([this, &remote, &sock]() {
+        onNewClient(remote.c_str(), sock);
         close(sock);
-        fClientThreadPool.erase(client);
-        onClientDisconnected(client);
+        fClientThreadPool.erase(remote);
+        onClientDisconnected(remote.c_str());
       });
-      fClientThreadPool[client].t.detach();
+      fClientThreadPool[remote].t.detach();
     }
   }
 
@@ -177,7 +179,7 @@ private:
     auto recvBuffer = new uint8_t[fBufferSize];
     while (true) {
       size = recv(sock, recvBuffer, fBufferSize, 0);
-      if (size == -1)
+      if (size <= 0)
         break;
       Buffer buffer(recvBuffer, size);
       if (!onData(buffer, client))
