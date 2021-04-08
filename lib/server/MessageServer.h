@@ -8,12 +8,13 @@
 #include <fcntl.h>
 #include <armadillo>
 #include <condition_variable>
+#include <utility>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
-#include "message/Buffer.h"
-
-#include "logger/Logger.h"
+#include <message/Buffer.h>
+#include <logger/Logger.h>
+#include <message/MessageParser.h>
 
 class MessageServer {
 private:
@@ -34,16 +35,21 @@ private:
   bool isRunning = false;
   bool stopRunning = false;
   std::map<const std::string, ClientParams> fClientThreadPool;
+  std::map<std::string, int> fMasterSocketPool;
+  std::map<std::string, int> fSlaveSocketPool;
   bool fKeepAlive = false;
   int fKeepAliveInterval = -1;
   std::mutex fMutex;
-  std::map<const std::string, std::string> fRedirectMasterPool;
-  std::map<const std::string, std::string> fRedirectSlavePool;
+  std::shared_ptr<MessageParser> fMessageParser = nullptr;
+  std::string fServerLogin;
+  std::string fServerPassword;
 
 public:
-  explicit MessageServer(int bufferSize = BUF_SIZE, bool tcpNoDelay = ENABLE_TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
-    fBufferSize(bufferSize), fTcpNoDelay(tcpNoDelay), fMaxConnectQueue(maxConnectQueue) {
-
+  explicit MessageServer(std::string login, std::string password, int bufferSize = BUF_SIZE,
+                         bool tcpNoDelay = ENABLE_TCP_NODELAY, int maxConnectQueue = MAX_CONNECT_QUEUE) :
+    fBufferSize(bufferSize), fTcpNoDelay(tcpNoDelay), fMaxConnectQueue(maxConnectQueue),
+    fServerLogin(std::move(login)), fServerPassword(std::move(password)) {
+    fMessageParser = std::make_shared<MessageParser>(fServerLogin, fServerPassword);
   }
 
   ~MessageServer() {
@@ -69,27 +75,6 @@ public:
       DWARN("stopping session with client %s", item.first.c_str());
       close(item.second.socket);
     }
-  }
-
-  bool createBridge(const std::string &master, const std::string &slave) {
-    if (fClientThreadPool.find(master) == fClientThreadPool.end()) return false;
-    if (fClientThreadPool.find(slave) == fClientThreadPool.end()) return false;
-    if (fRedirectMasterPool.find(master) != fRedirectMasterPool.end()) return false;
-    if (fRedirectSlavePool.find(slave) != fRedirectMasterPool.end()) return false;
-    fRedirectMasterPool[master] = slave;
-    fRedirectSlavePool[slave] = master;
-  }
-
-  bool sendTo(const char *client, const Buffer &data) {
-    std::lock_guard<std::mutex> lock(fMutex);
-    auto item = fClientThreadPool.find(client);
-    if (item == fClientThreadPool.end()) {
-      DERROR("couldn't find client %s in client thread pool", client);
-      return false;
-    }
-    if (send(item->second.socket, data.getDataPtr(), data.getSize(), 0) < 0) return false;
-
-    return true;
   }
 
 protected:
@@ -186,39 +171,73 @@ private:
 
   void clientHandler(const char *client, int sock) {
     DINFO("new client connected: %s", client);
-    int size;
+    size_t size;
+    int redirectSocket = -1;
+    std::string clientId;
     auto recvBuffer = new uint8_t[fBufferSize];
-    std::string redirectPeer = {};
+    std::shared_ptr<ConnectionType> connectionType = nullptr;
     while (true) {
       size = recv(sock, recvBuffer, fBufferSize, 0);
-      if (size <= 0)
-        break;
-      Buffer buffer(recvBuffer, size);
+      if (size <= 0) break;
 
-      if (redirectPeer.empty()) {
-        if (fRedirectMasterPool.find(client) != fRedirectMasterPool.end()) redirectPeer = fRedirectMasterPool.find(client)->second;
-        else if (fRedirectSlavePool.find(client) != fRedirectSlavePool.end()) redirectPeer = fRedirectSlavePool.find(client)->second;
+      auto parseResult = fMessageParser->parse(recvBuffer, size);
+      if (!parseResult) {
+        DERROR("failed to parse incoming message");
+        break;
       }
 
-      if (!redirectPeer.empty()) {
-        if (!sendTo(redirectPeer.c_str(), buffer)) {
-          DERROR("failed to send data to remote peer %s", redirectPeer.c_str());
-          break;
-        }
+      if (parseResult->getId() == ConnectMessage::id) {
+        clientId = parseResult->cast<ConnectMessage>().getConnectOptions().getClientId();
+        if (!connectMessageHandler(clientId, sock, parseResult, connectionType)) break;
         continue;
       }
 
-      if (!onData(buffer, client))
-        break;
+      if (redirectSocket < 0 && connectionType != nullptr) {
+        redirectSocket = getRedirectSocket(clientId, *connectionType);
+      }
+
+      if (redirectSocket < 0) continue;
+
+      send(redirectSocket, recvBuffer, size, 0);
+
     }
     delete[] recvBuffer;
     DWARN("client %s disconnected", client);
   }
 
-  bool init(const char *host, int port) {
-    fServerSocket = createSocket(host, port, 0, false);
-    if (fServerSocket <= 0)
-      return false;
+  int getRedirectSocket(const std::string &clientId, ConnectionType connectionType) {
+    std::map<std::string, int> *map;
+    switch (connectionType) {
+      case ConnectionType::TypeSlave: {
+        map = &fMasterSocketPool;
+        break;
+      }
+      case ConnectionType::TypeMaster: {
+        map = &fSlaveSocketPool;
+        break;
+      }
+    }
+    auto item = map->find(clientId);
+    if (item == map->end()) return -1;
+    return item->second;
+  }
+
+  bool connectMessageHandler(const std::string &client, int clientSock, const std::shared_ptr<Message> &parseResult, std::shared_ptr<ConnectionType> &connectionType) {
+    auto connectMessage = parseResult->cast<ConnectMessage>();
+    auto clientId = connectMessage.getConnectOptions().getClientId();
+    switch (connectMessage.getConnectOptions().getConnectionType()) {
+      case ConnectionType::TypeSlave:
+        if (fSlaveSocketPool.find(clientId) != fSlaveSocketPool.end()) return false;
+        DINFO("client %s registered as slave, id %s", client.c_str(), clientId.c_str());
+        fSlaveSocketPool[clientId] = clientSock;
+        break;
+      case ConnectionType::TypeMaster:
+        if (fMasterSocketPool.find(clientId) != fMasterSocketPool.end()) return false;
+        DINFO("client %s registered as master, id %s", client.c_str(), clientId.c_str());
+        fMasterSocketPool[clientId] = clientSock;
+        break;
+    }
+    connectionType = std::make_shared<ConnectionType>(connectMessage.getConnectOptions().getConnectionType());
     return true;
   }
 

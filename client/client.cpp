@@ -53,7 +53,7 @@ public:
 
     fMessageClient->connect(fServerAddress, fServerPort);
 
-    ConnectOptions opts(fApplicationType == "master" ? ConnectionType::TypeMaster : ConnectionType::TypeSlave);
+    ConnectOptions opts(fApplicationType == "master" ? ConnectionType::TypeMaster : ConnectionType::TypeSlave, fClientId);
 
     ConnectMessage::Ptr connectMessage = MessageFactory::create<ConnectMessage>(opts);
     auto msg = MessageFactory::create<EncryptedMessage>(connectMessage, fServerLogin, fServerKey);
