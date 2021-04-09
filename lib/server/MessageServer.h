@@ -135,16 +135,16 @@ private:
 
       std::lock_guard<std::mutex> lock(fMutex);
 
-      if (fClientThreadPool.find(client) != fClientThreadPool.end()) {
+      std::string remote = client + std::string(":") + std::to_string(peer.sin_port);
+
+      if (fClientThreadPool.find(remote) != fClientThreadPool.end()) {
         DERROR("refusing connection due to multiple accessing!");
         close(sock);
         continue;
       }
 
-      std::string remote = client + std::string(":") + std::to_string(peer.sin_port);
-
       fClientThreadPool[remote].socket = sock;
-      fClientThreadPool[remote].t = std::thread([this, &remote, &sock]() {
+      fClientThreadPool[remote].t = std::thread([this, remote, sock]() {
         clientHandler(remote.c_str(), sock);
         close(sock);
         fClientThreadPool.erase(remote);

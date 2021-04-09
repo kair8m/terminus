@@ -21,7 +21,7 @@ TEST(ClientTest, network) {
 
   ASSERT_TRUE(messageClient.connect("localhost", 9000));
 
-  ASSERT_TRUE(messageClient.sendMsg("hello", strlen("hello")));
+  ASSERT_TRUE(messageClient.sendData("hello", strlen("hello")));
 
   kill(pid, SIGKILL);
 }

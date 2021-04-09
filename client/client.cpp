@@ -11,6 +11,7 @@ private:
   std::shared_ptr<Terminal> fShellTerminal;
   std::shared_ptr<Console> fClientConsole;
   std::shared_ptr<MessageClient> fMessageClient;
+  std::shared_ptr<MessageParser> fMessageParser;
   cxxopts::Options fOptions;
   int fServerPort;
   bool fVerbose;
@@ -19,6 +20,7 @@ private:
   std::string fServerLogin;
   std::string fServerKey;
   std::string fClientId;
+  bool fReset = false;
 public:
 
   TerminusClientApplication() : fOptions("Terminus client") {
@@ -50,7 +52,9 @@ public:
       return -1;
     }
 
-    startSession();
+    fMessageParser = std::make_shared<MessageParser>(fServerLogin, fServerKey);
+
+    processSession();
 
     return 0;
   }
@@ -76,17 +80,116 @@ private:
   }
 
   bool sendConnect() {
-    fMessageClient->connect(fServerAddress, fServerPort);
+    fMessageClient->connect(fServerAddress, fServerPort, false);
 
     ConnectOptions opts(fApplicationType == "master" ? ConnectionType::TypeMaster : ConnectionType::TypeSlave, fClientId);
 
     ConnectMessage::Ptr connectMessage = MessageFactory::create<ConnectMessage>(opts);
     auto msg = MessageFactory::create<EncryptedMessage>(connectMessage, fServerLogin, fServerKey);
-    return fMessageClient->sendMsg((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
+    return fMessageClient->sendData((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
   }
 
-  void startSession() {
+  void processSession() {
+    if (fApplicationType == "master") {
+      processMasterSession();
+      return;
+    }
+    processSlaveSession();
+  }
 
+  void processSlaveSession() {
+    fShellTerminal = std::make_shared<Terminal>(80, 80, true);
+    fShellTerminal->open(false);
+    std::thread recvThread(&TerminusClientApplication::slaveReceive, this);
+
+    std::thread sendTread(&TerminusClientApplication::slaveSend, this);
+
+    sendTread.join();
+    fMessageClient.reset();
+    fShellTerminal.reset();
+    recvThread.join();
+  }
+
+  void slaveSend() {
+    while (!fReset) {
+      auto buffer = fShellTerminal->receive();
+      if (buffer.getSize() == 0) break;
+      PutCharMessage::Ptr putCharMessage = MessageFactory::create<PutCharMessage>(
+        std::string((char *) buffer.getDataPtr(), buffer.getSize()));
+      EncryptedMessage::Ptr encrypted = MessageFactory::create<EncryptedMessage>(putCharMessage, fServerLogin, fServerKey);
+      if (!fMessageClient->sendData((char *) encrypted->getBuffer().getDataPtr(), encrypted->getBuffer().getSize())) break;
+    }
+    fReset = true;
+  }
+
+  void slaveReceive() {
+    static const std::map<uint32_t, std::function<void(Message &)>> messageMap = {
+      {ResizeTerminalMessage::id, [&](Message &msg) {
+        auto resizeMsg = msg.cast<ResizeTerminalMessage>();
+        fShellTerminal->setSize((int) resizeMsg.getWidth(), (int) resizeMsg.getHeight());
+      }},
+      {PutCharMessage::id,        [&](Message &msg) {
+        auto putCharMsg = msg.cast<PutCharMessage>();
+        fShellTerminal->write(putCharMsg.getChars());
+      }},
+    };
+    while (!fReset) {
+      auto buffer = fMessageClient->receiveData();
+      if (buffer.getSize() == 0) break;
+      auto result = fMessageParser->parse(buffer.getDataPtr(), buffer.getSize());
+      if (!result) break;
+      auto item = messageMap.find(result->getId());
+      if (item == messageMap.end()) break;
+      Message &msg = *result;
+      item->second(msg);
+    }
+    fReset = true;
+  }
+
+  void processMasterSession() {
+    fClientConsole = std::make_shared<Console>();
+    fClientConsole->setup();
+
+    std::thread recvThread(&TerminusClientApplication::masterReceive, this);
+
+    std::thread sendTread(&TerminusClientApplication::masterSend, this);
+
+    sendTread.join();
+    fMessageClient.reset();
+    fClientConsole.reset();
+    recvThread.join();
+  }
+
+  void masterReceive() {
+    const static std::map<uint32_t, std::function<void(Message &)>> messageMap = {
+      {PutCharMessage::id, [&](Message &msg) {
+        auto putCharMsg = msg.cast<PutCharMessage>();
+        fClientConsole->display(putCharMsg.getChars());
+      }}
+    };
+    while (!fReset) {
+      auto buffer = fMessageClient->receiveData();
+      if (buffer.getSize() == 0) break;
+      auto result = fMessageParser->parse(buffer.getDataPtr(), buffer.getSize());
+      if (!result) break;
+      auto item = messageMap.find(result->getId());
+      if (item == messageMap.end()) break;
+      Message &msg = *result;
+      item->second(msg);
+    }
+    fReset = true;
+  }
+
+  void masterSend() {
+    while (!fReset) {
+      auto buffer = fClientConsole->read();
+      if (buffer.getSize() == 0) break;
+      PutCharMessage::Ptr putCharMessage = MessageFactory::create<PutCharMessage>(
+        std::string((char *) buffer.getDataPtr(), buffer.getSize()));
+      EncryptedMessage::Ptr encrypted = MessageFactory::create<EncryptedMessage>(putCharMessage, fServerLogin, fServerKey);
+      if (!fMessageClient->sendData((char *) encrypted->getBuffer().getDataPtr(), encrypted->getBuffer().getSize())) break;
+    }
+    fReset = true;
   }
 };
 

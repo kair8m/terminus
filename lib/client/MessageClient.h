@@ -23,11 +23,11 @@ public:
   ~MessageClient() {
     if (fSocket == -1) return;
     DWARN("disconnecting from %s", inet_ntoa(fServerAddress.sin_addr));
-    fReceiveThread.detach();
+    if (fReceiveThread.joinable()) fReceiveThread.detach();
     close(fSocket);
   }
 
-  bool connect(const std::string &address, int port) {
+  bool connect(const std::string &address, int port, bool async = true) {
     fSocket = 0;
 
     fSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -59,11 +59,11 @@ public:
       DCRITICAL("connect failed");
       return false;
     }
-    fReceiveThread = std::thread(&MessageClient::receiveTask, this);
+    if (async) fReceiveThread = std::thread(&MessageClient::receiveTask, this);
     return true;
   }
 
-  bool sendMsg(const char *msg, size_t size) const {
+  bool sendData(const char *msg, size_t size) const {
     size_t numBytesSent = send(fSocket, msg, size, 0);
     if (numBytesSent < 0) { // send failed
       perror("send failed");
@@ -75,6 +75,14 @@ public:
       return false;
     }
     return true;
+  }
+
+  Buffer receiveData() const {
+    auto buffer = new uint8_t[fBufferSize];
+    auto size = recv(fSocket, buffer, fBufferSize, 0);
+    Buffer data(buffer, size);
+    delete[] buffer;
+    return data;
   }
 
 protected:

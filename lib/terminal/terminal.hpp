@@ -22,7 +22,6 @@ private:
   const int READ_BUFFER_SIZE = 100000;
 public:
   Terminal(int width, int height, bool withAuthentication) : fWidth(width), fHeight(height), fAuthorize(withAuthentication) {
-    std::thread(&Terminal::readThread, this).detach();
   }
 
   ~Terminal() {
@@ -34,7 +33,7 @@ public:
     waitpid(fChildPid, &status, 0);
   }
 
-  bool open() {
+  bool open(bool async = true) {
     winsize window = {};
     window.ws_col = fWidth;
     window.ws_row = fHeight;
@@ -43,11 +42,23 @@ public:
       return false;
     if (fChildPid == 0) {
       tty();
-      exit(EXIT_SUCCESS);
+      _exit(EXIT_SUCCESS);
     }
     if (fcntl(fTerminalFd, F_SETFL, fcntl(fTerminalFd, F_GETFL) | O_NONBLOCK) < 0)
       return false;
+    if (async) std::thread(&Terminal::readThread, this).detach();
     return true;
+  }
+
+  Buffer receive() const {
+    auto recvBuf = new uint8_t[READ_BUFFER_SIZE];
+    auto recvSize = read(fTerminalFd, recvBuf, READ_BUFFER_SIZE);
+    if (recvSize <= 0) {
+      delete[] recvBuf;
+      return {};
+    }
+    Buffer buffer(recvBuf, recvSize);
+    return buffer;
   }
 
   void subscribeDataFlow(const ReadHandler &readHandler) {
@@ -87,6 +98,14 @@ public:
     waitpid(childPid, &status, 0);
     close(fd);
     return std::make_pair(status, output);
+  }
+
+  bool setSize(int width, int height) const {
+    if (fTerminalFd <= 0) return false;
+    winsize ws{};
+    ws.ws_col = width;
+    ws.ws_row = height;
+    return ioctl(fTerminalFd, TIOCSWINSZ, &ws) != -1;
   }
 
 protected:
