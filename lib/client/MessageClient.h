@@ -55,7 +55,6 @@ public:
 
     int connectRet = ::connect(fSocket, (struct sockaddr *) &fServerAddress, sizeof(fServerAddress));
     if (connectRet == -1) {
-      DCRITICAL("");
       perror("connect failed");
       DCRITICAL("connect failed");
       return false;
@@ -65,7 +64,7 @@ public:
   }
 
   bool sendMsg(const char *msg, size_t size) const {
-    int numBytesSent = send(fSocket, msg, size, 0);
+    size_t numBytesSent = send(fSocket, msg, size, 0);
     if (numBytesSent < 0) { // send failed
       perror("send failed");
       DCRITICAL("send failed");
@@ -91,7 +90,7 @@ protected:
 private:
 
   void receiveTask() {
-    int size;
+    size_t size;
     auto buffer = new uint8_t[fBufferSize];
 
     while (!fShutDown) {

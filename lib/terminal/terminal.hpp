@@ -69,7 +69,7 @@ public:
       exit(system(cmd.c_str()));
     }
     char buf[1024] = {0};
-    int numBytes;
+    size_t numBytes;
     std::string output;
     while ((numBytes = read(fd, buf, 1024))) {
       if (numBytes == -1) {
@@ -112,7 +112,7 @@ private:
     while (fTerminalFd == -1)
       std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-    int recvSize = 0;
+    size_t recvSize = 0;
     auto recvBuf = new char[READ_BUFFER_SIZE];
     while (!fReset) {
       recvSize = read(fTerminalFd, recvBuf, READ_BUFFER_SIZE);

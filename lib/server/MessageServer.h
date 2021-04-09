@@ -77,21 +77,6 @@ public:
     }
   }
 
-protected:
-
-  virtual bool onData(const Buffer &data, const char *client) {
-    if (data.getSize() == 0) {
-      DERROR("data empty");
-      return false;
-    }
-    DINFO("data arrived! size: %zu", data.getSize());
-    return true;
-  }
-
-  virtual void onClientDisconnected(const char *client) {
-    DERROR("client %s has disconnected");
-  }
-
 private:
 
   void bindAndListen(const char *host, int &port, int socketFlags) {
@@ -163,7 +148,6 @@ private:
         clientHandler(remote.c_str(), sock);
         close(sock);
         fClientThreadPool.erase(remote);
-        onClientDisconnected(remote.c_str());
       });
       fClientThreadPool[remote].t.detach();
     }
@@ -188,7 +172,7 @@ private:
 
       if (parseResult->getId() == ConnectMessage::id) {
         clientId = parseResult->cast<ConnectMessage>().getConnectOptions().getClientId();
-        if (!connectMessageHandler(clientId, sock, parseResult, connectionType)) break;
+        if (!connectMessageHandler(client, sock, parseResult, connectionType)) break;
         continue;
       }
 
@@ -203,6 +187,17 @@ private:
     }
     delete[] recvBuffer;
     DWARN("client %s disconnected", client);
+    if (connectionType == nullptr) return;
+
+    DWARN("erasing id %s from session socket pool", clientId.c_str());
+    switch (*connectionType) {
+      case ConnectionType::TypeSlave:
+        fSlaveSocketPool.erase(clientId);
+        break;
+      case ConnectionType::TypeMaster:
+        fMasterSocketPool.erase(clientId);
+        break;
+    }
   }
 
   int getRedirectSocket(const std::string &clientId, ConnectionType connectionType) {
@@ -227,12 +222,18 @@ private:
     auto clientId = connectMessage.getConnectOptions().getClientId();
     switch (connectMessage.getConnectOptions().getConnectionType()) {
       case ConnectionType::TypeSlave:
-        if (fSlaveSocketPool.find(clientId) != fSlaveSocketPool.end()) return false;
+        if (fSlaveSocketPool.find(clientId) != fSlaveSocketPool.end()) {
+          DERROR("client %s requested slave connection for %s, but there is slave already");
+          return false;
+        }
         DINFO("client %s registered as slave, id %s", client.c_str(), clientId.c_str());
         fSlaveSocketPool[clientId] = clientSock;
         break;
       case ConnectionType::TypeMaster:
-        if (fMasterSocketPool.find(clientId) != fMasterSocketPool.end()) return false;
+        if (fMasterSocketPool.find(clientId) != fMasterSocketPool.end()) {
+          DERROR("client %s requested master connection for %s, but there is master already");
+          return false;
+        }
         DINFO("client %s registered as master, id %s", client.c_str(), clientId.c_str());
         fMasterSocketPool[clientId] = clientSock;
         break;

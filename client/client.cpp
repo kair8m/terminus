@@ -6,18 +6,10 @@
 #include <client/MessageClient.h>
 #include <message/MessageParser.h>
 
-class ClientConsole : public Console {
-
-};
-
-class ShellTerminal : public Terminal {
-
-};
-
 class TerminusClientApplication {
 private:
-  std::shared_ptr<ShellTerminal> fShellTerminal;
-  std::shared_ptr<ClientConsole> fClientConsole;
+  std::shared_ptr<Terminal> fShellTerminal;
+  std::shared_ptr<Console> fClientConsole;
   std::shared_ptr<MessageClient> fMessageClient;
   cxxopts::Options fOptions;
   int fServerPort;
@@ -53,11 +45,12 @@ public:
 
     fMessageClient->connect(fServerAddress, fServerPort);
 
-    ConnectOptions opts(fApplicationType == "master" ? ConnectionType::TypeMaster : ConnectionType::TypeSlave, fClientId);
+    if (!sendConnect()) {
+      DERROR("failed to connect to server");
+      return -1;
+    }
 
-    ConnectMessage::Ptr connectMessage = MessageFactory::create<ConnectMessage>(opts);
-    auto msg = MessageFactory::create<EncryptedMessage>(connectMessage, fServerLogin, fServerKey);
-    fMessageClient->sendMsg((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
+    startSession();
 
     return 0;
   }
@@ -80,6 +73,20 @@ private:
       return false;
     }
     return true;
+  }
+
+  bool sendConnect() {
+    fMessageClient->connect(fServerAddress, fServerPort);
+
+    ConnectOptions opts(fApplicationType == "master" ? ConnectionType::TypeMaster : ConnectionType::TypeSlave, fClientId);
+
+    ConnectMessage::Ptr connectMessage = MessageFactory::create<ConnectMessage>(opts);
+    auto msg = MessageFactory::create<EncryptedMessage>(connectMessage, fServerLogin, fServerKey);
+    return fMessageClient->sendMsg((char *) msg->getBuffer().getDataPtr(), msg->getBuffer().getSize());
+  }
+
+  void startSession() {
+
   }
 };
 

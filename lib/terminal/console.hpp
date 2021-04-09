@@ -6,6 +6,9 @@
 #include <thread>
 #include <functional>
 #include <armadillo>
+#include <condition_variable>
+
+#include <message/Buffer.h>
 
 class Console {
 public:
@@ -17,6 +20,7 @@ private:
   termios fWindow = {};
   InputHandler fInputHandler = nullptr;
   bool active = true;
+  std::condition_variable fInputFlag;
 public:
   Console() {
     tcgetattr(STDIN_FILENO, &fSave);
@@ -48,6 +52,11 @@ public:
     fInputHandler = inputHandler;
   }
 
+  template <class Base>
+  void setupInputHandler(void(Base::*handler)(const std::string &), const Base *obj) {
+    fInputHandler = std::bind(handler, obj, std::placeholders::_1);
+  }
+
   void display(const std::string &data) {
     (void) fSave;
     ::write(STDOUT_FILENO, data.c_str(), data.size());
@@ -58,17 +67,21 @@ public:
     ::write(STDIN_FILENO, data.c_str(), data.size());
   }
 
+  Buffer read() const {
+
+    return {};
+  }
+
 private:
 
   void recvThread() {
     auto buf = new char[RECV_BUF_SIZE];
-    int recvSize = 0;
+    size_t recvSize = 0;
     while (active) {
       recvSize = ::read(STDIN_FILENO, buf, RECV_BUF_SIZE);
       if (recvSize <= 0)
         continue;
       std::string data(buf, recvSize);
-      onInputData(data);
       if (fInputHandler)
         fInputHandler(data);
     }
@@ -87,12 +100,6 @@ private:
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-  }
-
-protected:
-
-  virtual void onInputData(const std::string &data) {
-    (void) data;
   }
 
   virtual void onWindowChange(int width, int height) {
